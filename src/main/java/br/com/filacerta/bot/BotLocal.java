@@ -1,0 +1,142 @@
+package br.com.filacerta.bot;
+
+import br.com.filacerta.service.FilaService;
+import br.com.filacerta.web.dto.Dtos.BotPergunta;
+import br.com.filacerta.web.dto.Dtos.BotResposta;
+import br.com.filacerta.web.dto.Dtos.EstabelecimentoResumo;
+import br.com.filacerta.web.dto.Dtos.TicketView;
+import br.com.filacerta.web.exception.RecursoNaoEncontradoException;
+import org.springframework.stereotype.Component;
+
+import java.text.Normalizer;
+import java.util.List;
+
+/**
+ * Assistente por regras. Serve de "plano B" quando o bot externo nao esta configurado ou fora do ar,
+ * e tambem mostra como usar os dados ao vivo da fila numa resposta.
+ */
+@Component
+public class BotLocal implements BotAtendimento {
+
+    private static final List<String> SUGESTOES = List.of(
+            "Quanto tempo falta?", "Quando devo sair?", "Qual a fila mais rápida?", "Como funciona?");
+
+    private final FilaService fila;
+
+    public BotLocal(FilaService fila) {
+        this.fila = fila;
+    }
+
+    @Override
+    public BotResposta responder(BotPergunta p) {
+        String msg = normalizar(p.mensagem());
+        TicketView ticket = buscarTicket(p.ticketId());
+
+        if (tem(msg, "oi", "ola", "bom dia", "boa tarde", "boa noite", "e ai")) {
+            return resp("Oi! Eu sou o assistente da Fila Certa. Posso te dizer quanto falta, quando sair de casa "
+                    + "ou qual é a fila mais rápida perto de você.");
+        }
+        if (tem(msg, "como funciona", "ajuda", "o que e", "para que serve", "ajudar")) {
+            return resp("A Fila Certa te coloca na fila sem você estar lá. Eu cruzo o tempo de espera com a sua "
+                    + "distância e aviso a hora certa de sair — assim você chega quando a sua vez chega.");
+        }
+        if (tem(msg, "sair", "saia", "hora de ir", "que horas", "quando devo", "quando ir", "partir")) {
+            return ticket == null ? semTicket() : quandoSair(ticket);
+        }
+        if (tem(msg, "posicao", "quantas pessoas", "na minha frente", "meu lugar", "qual minha vez")) {
+            return ticket == null ? semTicket() : posicao(ticket);
+        }
+        if (tem(msg, "tempo", "espera", "demora", "demorar", "falta", "quanto")) {
+            return ticket == null ? melhorFila(p) : espera(ticket);
+        }
+        if (tem(msg, "cancel", "desist", "sair da fila")) {
+            return resp("Para sair da fila, use o botão “Sair da fila” na aba Meu ticket. Fica registrado e libera "
+                    + "o seu lugar para quem vem depois.");
+        }
+        if (tem(msg, "prioridade", "preferencial", "idoso", "gestante", "deficiencia")) {
+            return resp("Ao entrar na fila você pode marcar “Atendimento prioritário” (idosos, gestantes, pessoas com "
+                    + "deficiência). Quem é prioritário passa na frente de quem aguarda sem prioridade.");
+        }
+        if (tem(msg, "rapida", "melhor", "perto", "recomend", "onde", "menos fila", "vazia")) {
+            return melhorFila(p);
+        }
+        if (tem(msg, "obrigad", "valeu", "tchau")) {
+            return resp("Por nada! Boa fila — quer dizer, boa sem-fila. 😉");
+        }
+        return resp("Não tenho certeza se entendi. Posso ajudar com tempo de espera, hora de sair, sua posição na fila "
+                + "ou recomendar o lugar mais rápido perto de você.");
+    }
+
+    private BotResposta espera(TicketView t) {
+        return switch (t.status()) {
+            case AGUARDANDO -> resp("Faltam cerca de " + min(t.esperaMin()) + " para a sua vez em " + t.estabelecimentoNome()
+                    + ". Você é o " + t.posicao() + "º da fila.");
+            case CHAMADO -> resp("Já é a sua vez! Vá ao guichê " + t.guiche() + ".");
+            default -> resp("O seu ticket " + t.codigo() + " já foi encerrado (" + t.status().name().toLowerCase() + ").");
+        };
+    }
+
+    private BotResposta posicao(TicketView t) {
+        if (t.posicao() == null) return espera(t);
+        String frente = t.pessoasNaFrente() == 0 ? "Ninguém na sua frente!" : t.pessoasNaFrente() + " pessoa(s) na sua frente.";
+        return resp("Você é o " + t.posicao() + "º em " + t.estabelecimentoNome() + ". " + frente);
+    }
+
+    private BotResposta quandoSair(TicketView t) {
+        if (t.posicao() == null) return espera(t);
+        if (t.deslocamentoMin() == null) {
+            return resp("Ainda não sei onde você está. Permita a localização (ou arraste o seu ponto no radar) e eu calculo a hora exata de sair.");
+        }
+        if (t.saiEmMin() != null && t.saiEmMin() == 0) {
+            return resp("Saia agora! São " + min(t.deslocamentoMin()) + " até " + t.estabelecimentoNome()
+                    + " e faltam ~" + min(t.esperaMin()) + " para a sua vez.");
+        }
+        return resp("Saia em cerca de " + min(t.saiEmMin()) + ". O trajeto leva " + min(t.deslocamentoMin())
+                + " e a sua vez chega em ~" + min(t.esperaMin()) + ".");
+    }
+
+    private BotResposta melhorFila(BotPergunta p) {
+        List<EstabelecimentoResumo> lista = fila.listar(p.latitude(), p.longitude(), p.modo(), null);
+        if (lista.isEmpty()) return resp("Ainda não há estabelecimentos cadastrados.");
+        StringBuilder sb = new StringBuilder(p.latitude() == null
+                ? "Pelas filas de agora, as mais curtas são:"
+                : "Considerando fila + deslocamento, as melhores opções para você são:");
+        for (int i = 0; i < Math.min(3, lista.size()); i++) {
+            EstabelecimentoResumo r = lista.get(i);
+            sb.append("\n• ").append(r.nome()).append(" — espera de ").append(min(r.esperaMin()));
+            if (r.distanciaKm() != null) sb.append(", a ").append(r.distanciaKm()).append(" km");
+        }
+        return resp(sb.toString());
+    }
+
+    private BotResposta semTicket() {
+        return resp("Você ainda não tem um ticket ativo. Escolha um local na aba Descobrir e toque em “Entrar na fila”.");
+    }
+
+    private TicketView buscarTicket(String id) {
+        if (id == null || id.isBlank()) return null;
+        try {
+            return fila.consultar(id);
+        } catch (RecursoNaoEncontradoException e) {
+            return null;
+        }
+    }
+
+    private static BotResposta resp(String texto) {
+        return new BotResposta(texto, "assistente-local", SUGESTOES);
+    }
+
+    private static String min(Integer v) {
+        return v == null ? "—" : v + " min";
+    }
+
+    private static boolean tem(String msg, String... chaves) {
+        for (String c : chaves) if (msg.contains(c)) return true;
+        return false;
+    }
+
+    private static String normalizar(String s) {
+        return Normalizer.normalize(s == null ? "" : s, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "").toLowerCase().trim();
+    }
+}

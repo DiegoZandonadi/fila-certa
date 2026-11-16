@@ -1,0 +1,11 @@
+{
+  "name": "Fila Certa",
+  "short_name": "Fila Certa",
+  "description": "Chegue na hora. Nunca na fila.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#060913",
+  "theme_color": "#060913",
+  "lang": "pt-BR",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}

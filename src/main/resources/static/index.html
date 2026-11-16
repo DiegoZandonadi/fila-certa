@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fila Certa — chegue na hora, nunca na fila</title>
+  <meta name="description" content="Entre na fila de onde estiver. A Fila Certa cruza o tempo de espera com a sua localização e avisa a hora exata de sair.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' rx='14' fill='%23c4ff4d'/%3E%3Ccircle cx='11' cy='24' r='3.5' fill='%230b1400' opacity='.4'/%3E%3Ccircle cx='21' cy='24' r='4.5' fill='%230b1400' opacity='.65'/%3E%3Ccircle cx='34' cy='24' r='9' fill='none' stroke='%230b1400' stroke-width='3.5'/%3E%3Cpath d='M29.5 24.5l3.3 3.3 5.4-6.4' fill='none' stroke='%230b1400' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#060913">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<header class="topbar">
+  <a class="brand" href="#descobrir" data-go="descobrir" aria-label="Fila Certa">
+    <svg viewBox="0 0 48 48" aria-hidden="true">
+      <rect width="48" height="48" rx="14" fill="#c4ff4d"/>
+      <circle cx="11" cy="24" r="3.5" fill="#0b1400" opacity=".4"/>
+      <circle cx="21" cy="24" r="4.5" fill="#0b1400" opacity=".65"/>
+      <circle cx="34" cy="24" r="9" fill="none" stroke="#0b1400" stroke-width="3.5"/>
+      <path d="M29.5 24.5l3.3 3.3 5.4-6.4" fill="none" stroke="#0b1400" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <span class="wordmark">Fila<b>Certa</b><small>chegue na hora</small></span>
+  </a>
+
+  <nav class="nav" aria-label="Seções">
+    <button data-go="descobrir" class="active">📡 Descobrir</button>
+    <button data-go="ticket">🎟️ Meu ticket <span class="dot hidden" id="navDot"></span></button>
+    <button data-go="painel">🧑‍💼 Painel</button>
+    <button data-go="metricas">📊 Métricas</button>
+  </nav>
+
+  <div class="tools">
+    <button class="pill" id="demoPill" title="Piloto automático: simula clientes chegando e guichês atendendo">
+      <span class="live"></span><span id="demoText">Demo ao vivo</span>
+    </button>
+    <button class="icon-btn" id="themeBtn" aria-label="Alternar tema">🌙</button>
+  </div>
+</header>
+
+<main>
+  <!-- ===================================================== DESCOBRIR -->
+  <section class="view" id="view-descobrir">
+    <div class="view-head">
+      <div>
+        <h1>Não fique na fila.<br><em>Chegue na hora certa.</em></h1>
+        <p>O radar mostra onde estão as filas mais curtas perto de você. Entre na fila de onde estiver e a gente avisa a hora exata de sair.</p>
+      </div>
+      <div class="seg" id="modoSeg" role="group" aria-label="Como você vai">
+        <button data-modo="A_PE">🚶 A pé</button>
+        <button data-modo="TRANSPORTE" class="active">🚌 Transporte</button>
+        <button data-modo="CARRO">🚗 Carro</button>
+      </div>
+    </div>
+
+    <div class="grid-discover">
+      <div class="card radar-wrap">
+        <div class="radar-head">
+          <div class="chips" id="catChips"></div>
+          <button class="btn btn-ghost btn-sm" id="geoBtn">📍 Usar minha localização</button>
+        </div>
+        <div class="radar" id="radar">
+          <div class="sweep"></div>
+          <svg id="radarSvg" viewBox="0 0 600 600" role="img" aria-label="Radar de filas ao seu redor"></svg>
+        </div>
+        <div class="radar-foot">
+          <span id="locInfo">Arraste o ponto <b style="color:var(--accent-text)">VOCÊ</b> para simular outra localização.</span>
+          <span class="legend">
+            <span><i style="background:var(--ok)"></i>até 10 min</span>
+            <span><i style="background:var(--warn)"></i>até 25</span>
+            <span><i style="background:var(--bad)"></i>25+</span>
+          </span>
+        </div>
+      </div>
+
+      <div>
+        <div class="eyebrow" style="margin:0 4px 10px">Ordenado por <b style="color:var(--accent-text)">deslocamento + espera</b></div>
+        <div class="list" id="lista"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================== MEU TICKET -->
+  <section class="view hidden" id="view-ticket"></section>
+
+  <!-- ===================================================== PAINEL -->
+  <section class="view hidden" id="view-painel">
+    <div class="view-head">
+      <div>
+        <h1>Painel do <em>atendente</em></h1>
+        <p>Chame o próximo da fila, acompanhe os guichês e finalize atendimentos. Cada atendimento alimenta a previsão de tempo de espera.</p>
+      </div>
+      <select class="input" id="painelSel" style="max-width:340px" aria-label="Estabelecimento"></select>
+    </div>
+    <div id="painelBody"></div>
+  </section>
+
+  <!-- ===================================================== METRICAS -->
+  <section class="view hidden" id="view-metricas">
+    <div class="view-head">
+      <div>
+        <h1>As duas métricas que <em>movem a fila</em></h1>
+        <p>Tempo de espera e localização: quanto as pessoas esperam e de onde elas vêm. É a base do previsor e do "hora de sair".</p>
+      </div>
+    </div>
+    <div id="metricasBody"></div>
+  </section>
+</main>
+
+<div id="toasts" aria-live="polite"></div>
+<div id="modalRoot"></div>
+
+<!-- ===================================================== BOT -->
+<button class="bot-fab" id="botFab" aria-label="Abrir assistente"><span class="face">💬</span><span>Assistente</span></button>
+<aside class="bot hidden" id="bot" aria-label="Assistente Fila Certa">
+  <div class="bot-head">
+    <div class="face">🤖</div>
+    <div><b>Assistente Fila Certa</b><small><i></i><span id="botOrigem">online</span></small></div>
+    <button class="icon-btn" id="botClose" aria-label="Fechar">✕</button>
+  </div>
+  <div class="msgs" id="msgs"></div>
+  <div class="quick" id="quick"></div>
+  <form class="bot-input" id="botForm">
+    <input class="input" id="botInput" placeholder="Pergunte sobre sua fila…" autocomplete="off" maxlength="500">
+    <button class="btn btn-primary" type="submit" aria-label="Enviar">➤</button>
+  </form>
+</aside>
+
+<script src="js/api.js"></script>
+<script src="js/radar.js"></script>
+<script src="js/views.js"></script>
+<script src="js/bot.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
