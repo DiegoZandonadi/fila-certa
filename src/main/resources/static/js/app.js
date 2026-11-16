@@ -9,6 +9,7 @@ function irPara(view) {
   if (view === 'ticket') { renderTicket(); $('#navDot').classList.add('hidden'); }
   if (view === 'painel') carregarPainel();
   if (view === 'metricas') carregarMetricas();
+  if (view === 'ia') carregarIA();
   if (view === 'descobrir') carregarLista();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -79,6 +80,13 @@ async function carregarMetricas() {
     S.fator = m.fatorRelogio;
     atualizarPillDemo(m.simulacao);
     if (S.view === 'metricas') renderMetricas(m);
+  } catch (err) { console.error(err); }
+}
+
+async function carregarIA() {
+  try {
+    const v = await api('/ml/previsoes');
+    if (S.view === 'ia') renderIA(v);
   } catch (err) { console.error(err); }
 }
 
@@ -180,6 +188,16 @@ $('#geoBtn').onclick = () => {
     { enableHighAccuracy: true, timeout: 8000 });
 };
 
+$('#iaColetar').onclick = async (ev) => {
+  const b = ev.currentTarget; b.disabled = true;
+  try {
+    const r = await api('/ml/coletar', { method: 'POST' });
+    toast(r.novas ? `${r.novas} leituras novas de Barueri.` : 'Sem leituras novas (a Prefeitura ainda não atualizou).', 'ok', '📡');
+    carregarIA();
+  } catch (err) { toast(err.message, 'err', '⚠️'); }
+  finally { b.disabled = false; }
+};
+
 $('#painelSel').onchange = (ev) => { S.painelId = +ev.target.value; store.set('painelId', S.painelId); carregarPainel(); };
 document.addEventListener('change', (ev) => { if (ev.target.id === 'metEstab') { S.metricasEstab = ev.target.value; carregarMetricas(); } });
 
@@ -216,6 +234,7 @@ function iniciar() {
     if (S.view === 'descobrir' && !S.arrastando) carregarLista();
     if (S.view === 'painel') carregarPainel();
     if (S.view === 'metricas' && tick % 3 === 0) carregarMetricas();
+    if (S.view === 'ia' && tick % 5 === 0) carregarIA();
   }, 2000);
 }
 iniciar();

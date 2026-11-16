@@ -246,3 +246,90 @@ function renderMetricas(m) {
       </div>
     </div>`;
 }
+
+
+// ------------------------------------------------------------------ PREVISAO IA
+const SETOR_ROTULO = { CLINICO: 'Clínico geral', PEDIATRIA: 'Pediatria', ORTOPEDIA: 'Ortopedia', EMERGENCIA: 'Emergência', TRIAGEM: 'Triagem', ATENDIMENTO: 'Atendimento', GINECOLOGIA: 'Ginecologia', ODONTOLOGIA: 'Odontologia', OUTRO: 'Outro' };
+const UNIDADE_ROTULO = { 'ENGENHO NOVO': 'PA Engenho Novo', IMPERIAL: 'PA Imperial', CAMARGO: 'PA Camargo', MUTINGA: 'PA Mutinga', PAA: 'PA Adulto (PAA)', PAI: 'PA Infantil (PAI)', HMB: 'HMB', OUTRA: 'Outra unidade' };
+const NIVEL_IA = { VERDE: 'var(--ok)', AMARELO: 'var(--warn)', VERMELHO: 'var(--bad)' };
+
+// "PRONTO ATENDIMENTO CAMARGO- FAST TRACK - CLINICO" -> "Fast track · clinico" (sem repetir a unidade)
+function detalheLocal(p) {
+  const partes = p.local.split('-').map((x) => x.trim()).filter(Boolean).slice(1)
+    .filter((x) => x.toUpperCase() !== p.unidade && x.toUpperCase() !== 'PAA' && x.toUpperCase() !== 'PAI');
+  const t = (partes.length ? partes.join(' · ') : SETOR_ROTULO[p.setor] || p.setor).toLowerCase();
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}
+
+function chipProb(p, limiar) {
+  if (p.probLonga == null) return '<span class="prob none" title="Sem modelo carregado">—</span>';
+  const pct = Math.round(p.probLonga * 100);
+  const cls = pct >= 50 ? 'hi' : pct >= 20 ? 'mid' : 'lo';
+  return `<span class="prob ${cls}" title="Chance de a espera passar de ${limiar} min">${pct}%</span>`;
+}
+
+function setaTendencia(t) {
+  if (t == null || t === 0) return '<span class="muted" title="Estável">→</span>';
+  return t > 0 ? `<span style="color:var(--bad)" title="+${t} min em 15 min">↑ ${t}</span>` : `<span style="color:var(--ok)" title="${t} min em 15 min">↓ ${Math.abs(t)}</span>`;
+}
+
+function renderIA(v) {
+  const root = $('#iaBody');
+  const m = v.meta;
+  const fmtHora = (s) => (s ? new Date(s).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—');
+  if (!v.previsoes.length) {
+    root.innerHTML = `<div class="card empty"><div class="big">📡</div><h2>Ainda sem leituras de Barueri</h2>
+      <p>O app coleta o painel da Prefeitura a cada 5 minutos. Toque em “Coletar agora” para buscar a primeira leitura.</p></div>`;
+    return;
+  }
+  const met = m.metricas || {};
+  const porUnidade = {};
+  v.previsoes.forEach((p) => { (porUnidade[p.unidade] = porUnidade[p.unidade] || []).push(p); });
+  const semTendencia = v.previsoes.some((p) => p.origem === 'modelo-sem-tendencia');
+
+  root.innerHTML = `
+    ${m.aviso ? `<div class="warn-banner">⚠️ ${esc(m.aviso)}</div>` : ''}
+    <div class="ia-meta">
+      <span class="pill"><span class="live"></span>Leitura de ${fmtHora(m.ultimaLeitura)}</span>
+      <span class="pill">🗂️ ${m.leiturasTotal.toLocaleString('pt-BR')} leituras</span>
+      <span class="pill">⏱️ previsão em ${m.horizonteMin} min</span>
+      <span class="pill">🚦 longa = ${m.limiarLongaMin}+ min</span>
+      ${semTendencia ? '<span class="pill" title="O app precisa de ~15 min de coleta para medir a tendência">📈 acumulando histórico</span>' : ''}
+      <a class="pill" href="/api/ml/dados.csv" download>⬇️ baixar CSV coletado</a>
+    </div>
+
+    <div class="card card-pad ia-alert ${v.alertas.length ? 'on' : ''}">
+      <div class="chart-head"><h2>${v.alertas.length ? '🚨 Risco de espera longa' : '✅ Nenhum setor com risco agora'}</h2><span class="muted" style="font-size:.8rem">chance ≥ 50% de passar de ${m.limiarLongaMin} min</span></div>
+      ${v.alertas.length ? `<div class="alert-list">${v.alertas.map((p) => `<div class="alert-item"><span><b>${esc(UNIDADE_ROTULO[p.unidade] || p.unidade)}</b> · ${esc(detalheLocal(p))}</span><span>${p.esperaAtualMin} → <b>${p.previstoMin} min</b> ${chipProb(p, m.limiarLongaMin)}</span></div>`).join('')}</div>` : '<p class="muted">Quando algum setor passar de 50% de chance, ele aparece aqui para o gestor remanejar equipe.</p>'}
+    </div>
+
+    <h2 class="sec-title">Onde vale a pena ir agora</h2>
+    <div class="reco-grid">${Object.entries(v.recomendacoes).map(([setor, lista]) => `
+      <div class="card card-pad reco-card"><div class="eyebrow">${esc(SETOR_ROTULO[setor] || setor)}</div>
+        ${lista.map((p, i) => `<div class="reco-row${i === 0 ? ' best' : ''}"><span class="rk">${i + 1}º</span><span class="nm">${esc(UNIDADE_ROTULO[p.unidade] || p.unidade)}<small class="det">${esc(detalheLocal(p))}</small></span>
+          <span class="vl" style="color:${NIVEL_IA[p.nivel]}">${p.previstoMin}<small> min</small></span>${chipProb(p, m.limiarLongaMin)}</div>`).join('')}
+      </div>`).join('')}</div>
+
+    <h2 class="sec-title">Todas as unidades <span class="muted" style="font-weight:500;font-size:.85rem">agora → previsto em ${m.horizonteMin} min</span></h2>
+    <div class="units-grid">${Object.entries(porUnidade).map(([u, linhas]) => {
+      const max = Math.max(30, ...linhas.map((p) => Math.max(p.esperaAtualMin, p.previstoMin)));
+      return `<div class="card card-pad"><h3 class="unit-title">${esc(UNIDADE_ROTULO[u] || u)}</h3>
+        ${linhas.map((p) => `<div class="srow" title="${esc(p.local)}">
+          <div class="sname">${esc(detalheLocal(p))}</div>
+          <div class="sbar"><i class="now" style="width:${(p.esperaAtualMin / max) * 100}%"></i><i class="fut" style="width:${(p.previstoMin / max) * 100}%;background:${NIVEL_IA[p.nivel]}"></i></div>
+          <div class="sval num">${p.esperaAtualMin}<span class="muted"> → </span><b style="color:${NIVEL_IA[p.nivel]}">${p.previstoMin}</b></div>
+          <div class="strend">${setaTendencia(p.tendenciaMin)}</div>
+          <div>${chipProb(p, m.limiarLongaMin)}</div></div>`).join('')}
+      </div>`;
+    }).join('')}</div>
+
+    ${m.modeloAtivo && met.f1 != null ? `<div class="card card-pad" style="margin-top:18px"><div class="chart-head"><h2>🧪 Qualidade do modelo (conjunto de teste)</h2></div>
+      <div class="stats" style="grid-template-columns:repeat(auto-fit,minmax(130px,1fr))">
+        <div class="stat"><b>${fmtDec(+met.mae_min.toFixed(1))}</b><span>erro médio (min)</span></div>
+        <div class="stat"><b>${fmtDec(+met.mae_baseline_min.toFixed(1))}</b><span>erro de "igual a agora"</span></div>
+        <div class="stat"><b>${fmtDec(+met.r2.toFixed(2))}</b><span>R² (regressão)</span></div>
+        <div class="stat"><b>${fmtDec(+met.recall.toFixed(2))}</b><span>recall (longa)</span></div>
+        <div class="stat"><b>${fmtDec(+met.f1.toFixed(2))}</b><span>F1 (longa)</span></div>
+        <div class="stat"><b>${fmtDec(+met.auc.toFixed(2))}</b><span>ROC AUC</span></div></div>
+      <p class="muted" style="font-size:.78rem;margin-top:10px">Gerado em ${esc(m.geradoEm || '—')} · treino: ${esc(m.fonteTreino || '—')}. Os dados são médias agregadas por setor, não a experiência de cada pessoa.</p></div>` : ''}`;
+}

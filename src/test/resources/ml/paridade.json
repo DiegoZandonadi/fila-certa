@@ -1,0 +1,218 @@
+[
+  {
+    "num": {
+      "espera_atual": 27.0,
+      "espera_passada": 31.0,
+      "tendencia": -4.0,
+      "media_geral": 12.36,
+      "media_unidade": 15.0,
+      "n_alta": 3.0,
+      "hora_sen": -0.32143946530316153,
+      "hora_cos": -0.9469301294951057,
+      "fim_de_semana": 0.0,
+      "sintomas": 0.0
+    },
+    "unidade": "ENGENHO NOVO",
+    "setor": "PEDIATRIA",
+    "reg": 24.997357227912957,
+    "prob": 0.9937323645341921
+  },
+  {
+    "num": {
+      "espera_atual": 7.0,
+      "espera_passada": 7.0,
+      "tendencia": 0.0,
+      "media_geral": 16.72,
+      "media_unidade": 18.6,
+      "n_alta": 8.0,
+      "hora_sen": -0.8968727415326884,
+      "hora_cos": 0.442288690219001,
+      "fim_de_semana": 0.0,
+      "sintomas": 0.0
+    },
+    "unidade": "CAMARGO",
+    "setor": "EMERGENCIA",
+    "reg": 7.10737458021851,
+    "prob": 0.00015038282751055618
+  },
+  {
+    "num": {
+      "espera_atual": 8.0,
+      "espera_passada": 9.0,
+      "tendencia": -1.0,
+      "media_geral": 14.8,
+      "media_unidade": 23.0,
+      "n_alta": 8.0,
+      "hora_sen": -0.9659258262890684,
+      "hora_cos": 0.2588190451025203,
+      "fim_de_semana": 0.0,
+      "sintomas": 0.0
+    },
+    "unidade": "PAA",
+    "setor": "ATENDIMENTO",
+    "reg": 7.792790672630905,
+    "prob": 0.00048616809919835806
+  },
+  {
+    "num": {
+      "espera_atual": 19.0,
+      "espera_passada": 21.0,
+      "tendencia": -2.0,
+      "media_geral": 16.36,
+      "media_unidade": 14.4,
+      "n_alta": 7.0,
+      "hora_sen": 0.49999999999999994,
+      "hora_cos": -0.8660254037844387,
+      "fim_de_semana": 0.0,
+      "sintomas": 0.0
+    },
+    "unidade": "IMPERIAL",
+    "setor": "ORTOPEDIA",
+    "reg": 18.382986345258118,
+    "prob": 0.46428837098730236
+  },
+  {
+    "num": {
+      "espera_atual": 10.0,
+      "espera_passada": 11.0,
+      "tendencia": -1.0,
+      "media_geral": 11.52,
+      "media_unidade": 8.2,
+      "n_alta": 3.0,
+      "hora_sen": -0.4422886902190014,
+      "hora_cos": 0.8968727415326883,
+      "fim_de_semana": 0.0,
+      "sintomas": 0.0
+    },
+    "unidade": "CAMARGO",
+    "setor": "TRIAGEM",
+    "reg": 9.456567303187306,
+    "prob": 0.0008199370289585253
+  },
+  {
+    "num": {
+      "espera_atual": 4.0,
+      "espera_passada": 6.0,
+      "tendencia": -2.0,
+      "media_geral": 14.68,
+      "media_unidade": 8.5,
+      "n_alta": 5.0,
+      "hora_sen": -0.6593458151000687,
+      "hora_cos": 0.7518398074789775,
+      "fim_de_semana": 0.0,
+      "sintomas": 0.0
+    },
+    "unidade": "PAI",
+    "setor": "ATENDIMENTO",
+    "reg": 3.4268889211335463,
+    "prob": 6.529607846394941e-06
+  },
+  {
+    "num": {
+      "espera_atual": 5.0,
+      "espera_passada": 6.0,
+      "tendencia": -1.0,
+      "media_geral": 9.8,
+      "media_unidade": 10.0,
+      "n_alta": 3.0,
+      "hora_sen": 0.9238795325112868,
+      "hora_cos": -0.3826834323650895,
+      "fim_de_semana": 0.0,
+      "sintomas": 0.0
+    },
+    "unidade": "ENGENHO NOVO",
+    "setor": "PEDIATRIA",
+    "reg": 4.986201906573215,
+    "prob": 2.573741811110046e-05
+  },
+  {
+    "num": {
+      "espera_atual": 2.0,
+      "espera_passada": 4.0,
+      "tendencia": -2.0,
+      "media_geral": 8.32,
+      "media_unidade": 7.8,
+      "n_alta": 0.0,
+      "hora_sen": -0.13052619222005168,
+      "hora_cos": 0.9914448613738104,
+      "fim_de_semana": 0.0,
+      "sintomas": 0.0
+    },
+    "unidade": "IMPERIAL",
+    "setor": "TRIAGEM",
+    "reg": 1.3648944975394457,
+    "prob": 1.430790486610818e-06
+  },
+  {
+    "num": {
+      "espera_atual": 19.0,
+      "espera_passada": 19.0,
+      "tendencia": 0.0,
+      "media_geral": 7.04,
+      "media_unidade": 13.0,
+      "n_alta": 1.0,
+      "hora_sen": 0.9238795325112867,
+      "hora_cos": 0.38268343236508984,
+      "fim_de_semana": 0.0,
+      "sintomas": 0.0
+    },
+    "unidade": "ENGENHO NOVO",
+    "setor": "TRIAGEM",
+    "reg": 18.302713575363203,
+    "prob": 0.6629386671809412
+  },
+  {
+    "num": {
+      "espera_atual": 7.0,
+      "espera_passada": 9.0,
+      "tendencia": -2.0,
+      "media_geral": 9.8,
+      "media_unidade": 9.2,
+      "n_alta": 1.0,
+      "hora_sen": -0.6593458151000688,
+      "hora_cos": -0.7518398074789774,
+      "fim_de_semana": 0.0,
+      "sintomas": 0.0
+    },
+    "unidade": "ENGENHO NOVO",
+    "setor": "ATENDIMENTO",
+    "reg": 6.241660123306797,
+    "prob": 9.437534791132196e-05
+  },
+  {
+    "num": {
+      "espera_atual": 6.0,
+      "espera_passada": 7.0,
+      "tendencia": -1.0,
+      "media_geral": 11.2,
+      "media_unidade": 15.0,
+      "n_alta": 4.0,
+      "hora_sen": 0.8314696123025451,
+      "hora_cos": -0.5555702330196023,
+      "fim_de_semana": 0.0,
+      "sintomas": 0.0
+    },
+    "unidade": "ENGENHO NOVO",
+    "setor": "ATENDIMENTO",
+    "reg": 5.737643644775723,
+    "prob": 7.901250162700256e-05
+  },
+  {
+    "num": {
+      "espera_atual": 3.0,
+      "espera_passada": 4.0,
+      "tendencia": -1.0,
+      "media_geral": 9.92,
+      "media_unidade": 10.4,
+      "n_alta": 3.0,
+      "hora_sen": 0.3214394653031616,
+      "hora_cos": 0.9469301294951057,
+      "fim_de_semana": 0.0,
+      "sintomas": 0.0
+    },
+    "unidade": "IMPERIAL",
+    "setor": "TRIAGEM",
+    "reg": 2.739414400421966,
+    "prob": 5.524784424259082e-06
+  }
+]

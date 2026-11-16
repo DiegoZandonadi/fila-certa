@@ -45,6 +45,10 @@ public class DataSeeder implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
+        if (estabelecimentos.count() > 0) {
+            log.info("Base ja populada ({} estabelecimentos): seed ignorado.", estabelecimentos.count());
+            return; // banco em arquivo (perfil "arquivo") reaproveita os dados entre execucoes
+        }
         List<Estabelecimento> lista = estabelecimentos.saveAll(List.of(
                 new Estabelecimento("Clínica Vida Plena", Categoria.SAUDE, "Av. Paulista, 1500", "Bela Vista", -23.5640, -46.6527, 4, 9),
                 new Estabelecimento("UPA Vila Mariana", Categoria.SAUDE, "Rua Domingos de Morais, 2564", "Vila Mariana", -23.5894, -46.6350, 5, 12),
