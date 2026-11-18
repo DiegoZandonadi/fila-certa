@@ -30,7 +30,7 @@ Global Solution 2026.2 · CitizenTech · Engenharia de Software (2º ano) · dis
 | Luis Miguel Gonçalves Pinto | 561232 |
 | Rafael Joda da Costa e Silva | 561939 |
 
-**Registro de uso de IA:** [prompts.md](prompts.md).
+**Registro de uso de IA (auxílio de copiloto):** [prompts.md](prompts.md).
 
 ## A ideia
 
