@@ -57,7 +57,7 @@ Abra <http://localhost:8080>. Sem nada para instalar: usa H2 em memória.
 java -jar target/fila-certa-1.0.0.jar --spring.profiles.active=arquivo
 ```
 
-Testes: `./mvnw test` (15 testes: regras da fila e concorrência, importador, bot, leitura do painel de Barueri e a verificação de que o Java reproduz o scikit-learn).
+Testes: `./mvnw test` (29 testes: regras do domínio, fila e concorrência, importador, bot, leitura do painel de Barueri e a verificação de que o Java reproduz o scikit-learn).
 
 ## Telas
 
@@ -78,7 +78,7 @@ A chave **Simulação** (menu lateral) liga/desliga o piloto automático da fila
 
 ```
 br.com.filacerta
-├─ domain/       Estabelecimento, Ticket + enums (Categoria, StatusTicket, ModoDeslocamento)
+├─ domain/       Estabelecimento, Ticket (ciclo de vida e invariantes) + enums + RegraDeDominioException
 ├─ repository/   Spring Data JPA
 ├─ service/      FilaService (regras), MetricasService, DistanciaService, SimuladorFila
 │  └─ previsao/  PrevisorTempoEspera  ← ponto de extensão (fila local)

@@ -19,8 +19,8 @@ public class ApiExceptionHandler {
         return corpo(HttpStatus.NOT_FOUND, ex.getMessage());
     }
 
-    @ExceptionHandler(RegraNegocioException.class)
-    public ResponseEntity<Map<String, Object>> regra(RegraNegocioException ex) {
+    @ExceptionHandler(br.com.filacerta.domain.RegraDeDominioException.class)
+    public ResponseEntity<Map<String, Object>> regra(br.com.filacerta.domain.RegraDeDominioException ex) {
         return corpo(HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage());
     }
 

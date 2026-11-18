@@ -93,7 +93,7 @@ public class FilaService {
         Estabelecimento e = buscarEstabelecimento(estabelecimentoId);
         List<Ticket> fila = aguardandoOrdenado(e.getId());
         List<Ticket> chamados = tickets.findByEstabelecimentoIdAndStatus(e.getId(), StatusTicket.CHAMADO);
-        int livres = Math.max(0, e.getGuiches() - chamados.size());
+        int livres = e.guichesLivres(chamados.size());
 
         List<GuicheView> guiches = new ArrayList<>();
         for (int n = 1; n <= e.getGuiches(); n++) {
@@ -142,11 +142,7 @@ public class FilaService {
     @Transactional
     public synchronized TicketView cancelar(String ticketId) {
         Ticket t = buscarTicket(ticketId);
-        if (t.getStatus() != StatusTicket.AGUARDANDO) {
-            throw new RegraNegocioException("Só é possível sair de uma fila enquanto você está aguardando.");
-        }
-        t.setStatus(StatusTicket.CANCELADO);
-        t.setFinalizadoEm(relogio.agora());
+        t.cancelar(relogio.agora());
         return visao(tickets.save(t));
     }
 
@@ -158,42 +154,26 @@ public class FilaService {
         List<Ticket> fila = aguardandoOrdenado(e.getId());
         if (fila.isEmpty()) throw new RegraNegocioException("Ninguém aguardando nesta fila.");
 
-        Set<Integer> ocupados = new HashSet<>();
-        for (Ticket c : tickets.findByEstabelecimentoIdAndStatus(e.getId(), StatusTicket.CHAMADO)) {
-            if (c.getGuiche() != null) ocupados.add(c.getGuiche());
-        }
-        Integer livre = null;
-        for (int n = 1; n <= e.getGuiches(); n++) {
-            if (!ocupados.contains(n)) { livre = n; break; }
-        }
-        if (livre == null) throw new RegraNegocioException("Todos os guichês estão ocupados. Finalize um atendimento.");
+        List<Ticket> emAtendimento = tickets.findByEstabelecimentoIdAndStatus(e.getId(), StatusTicket.CHAMADO);
+        int livre = e.proximoGuicheLivre(emAtendimento)
+                .orElseThrow(() -> new RegraNegocioException("Todos os guichês estão ocupados. Finalize um atendimento."));
 
         Ticket t = fila.get(0);
-        t.setStatus(StatusTicket.CHAMADO);
-        t.setChamadoEm(relogio.agora());
-        t.setGuiche(livre);
+        t.chamar(livre, relogio.agora());
         return visao(tickets.save(t));
     }
 
     @Transactional
     public synchronized TicketView finalizar(String ticketId) {
         Ticket t = buscarTicket(ticketId);
-        if (t.getStatus() != StatusTicket.CHAMADO) {
-            throw new RegraNegocioException("Só é possível finalizar um atendimento em andamento.");
-        }
-        t.setStatus(StatusTicket.ATENDIDO);
-        t.setFinalizadoEm(relogio.agora());
+        t.finalizar(relogio.agora());
         return visao(tickets.save(t));
     }
 
     @Transactional
     public synchronized TicketView marcarAusente(String ticketId) {
         Ticket t = buscarTicket(ticketId);
-        if (t.getStatus() != StatusTicket.CHAMADO) {
-            throw new RegraNegocioException("Só é possível marcar ausência de quem foi chamado.");
-        }
-        t.setStatus(StatusTicket.AUSENTE);
-        t.setFinalizadoEm(relogio.agora());
+        t.marcarAusente(relogio.agora());
         return visao(tickets.save(t));
     }
 
@@ -220,7 +200,7 @@ public class FilaService {
     private EstabelecimentoResumo resumo(Estabelecimento e, Double lat, Double lng, ModoDeslocamento modo, boolean recomendado) {
         int aguardando = (int) tickets.countByEstabelecimentoIdAndStatus(e.getId(), StatusTicket.AGUARDANDO);
         int chamados = (int) tickets.countByEstabelecimentoIdAndStatus(e.getId(), StatusTicket.CHAMADO);
-        int livres = Math.max(0, e.getGuiches() - chamados);
+        int livres = e.guichesLivres(chamados);
         Previsao p = previsor.prever(e, aguardando, livres);
         int espera = (int) Math.ceil(p.esperaMin());
 
@@ -247,7 +227,7 @@ public class FilaService {
                 if (fila.get(i).getId().equals(t.getId())) { idx = i; break; }
             }
             int chamados = (int) tickets.countByEstabelecimentoIdAndStatus(t.getEstabelecimento().getId(), StatusTicket.CHAMADO);
-            return montar(t, idx, Math.max(0, t.getEstabelecimento().getGuiches() - chamados));
+            return montar(t, idx, t.getEstabelecimento().guichesLivres(chamados));
         }
         return montar(t, -1, 0);
     }

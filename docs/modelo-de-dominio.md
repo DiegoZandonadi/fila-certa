@@ -17,6 +17,8 @@ classDiagram
         -double longitude
         -int guiches
         -double tempoMedioBaseMin
+        +guichesLivres(ocupados) int
+        +proximoGuicheLivre(emAtendimento) OptionalInt
     }
 
     class Ticket {
@@ -31,6 +33,11 @@ classDiagram
         -LocalDateTime finalizadoEm
         -Integer guiche
         -Double distanciaKm
+        +chamar(guiche, agora)
+        +finalizar(agora)
+        +marcarAusente(agora)
+        +cancelar(agora)
+        +registrarAtendimentoHistorico(guiche, chamadoEm, finalizadoEm)
         +atualizarLocalizacao(lat, lng, km, modo)
         +esperaRealMin() Double
         +atendimentoRealMin() Double
@@ -94,6 +101,26 @@ classDiagram
     SimuladorFila --> FilaService : simula clientes e guichês
 ```
 
+## Ciclo de vida do ticket
+
+As transições de status são **métodos do próprio `Ticket`**, e não setters: só é possível chegar a um estado válido. Uma tentativa inválida lança `RegraDeDominioException` (HTTP 422) e não altera o ticket.
+
+```mermaid
+stateDiagram-v2
+    [*] --> AGUARDANDO : entrar na fila
+    AGUARDANDO --> CHAMADO : chamar(guichê)
+    AGUARDANDO --> CANCELADO : cancelar()
+    CHAMADO --> ATENDIDO : finalizar()
+    CHAMADO --> AUSENTE : marcarAusente()
+    ATENDIDO --> [*]
+    CANCELADO --> [*]
+    AUSENTE --> [*]
+```
+
+Invariantes protegidas pelas entidades:
+- `Ticket`: nome obrigatório (até 60 caracteres, aparado); só chama quem aguarda; o guichê precisa existir no estabelecimento; datas do histórico em ordem.
+- `Estabelecimento`: nome e categoria obrigatórios, coordenadas válidas, ao menos um guichê, tempo de atendimento positivo; sabe dizer quantos guichês estão livres e qual é o próximo.
+
 ## Módulo de previsão (Machine Learning)
 
 ```mermaid
@@ -133,8 +160,8 @@ classDiagram
 
 | Camada | Classes | Papel |
 |---|---|---|
-| Domínio | `Estabelecimento`, `Ticket`, enums | Estado e invariantes (atributos privados, construtores, comportamento em `Ticket`). |
-| Serviço | `FilaService`, `MetricasService`, `DistanciaService`, `PrevisaoService` | Regras de negócio e cálculos (hora de sair, economia, previsão). |
+| Domínio | `Estabelecimento`, `Ticket`, enums, `RegraDeDominioException` | Estado, invariantes **e regras** (ciclo de vida do ticket, escolha de guichê). Sem setters de estado. |
+| Serviço | `FilaService`, `MetricasService`, `DistanciaService`, `PrevisaoService` | Orquestra o domínio (busca, chama a entidade, salva) e faz os cálculos (hora de sair, economia, previsão). |
 | Persistência | `*Repository` (Spring Data JPA) | Acesso a dados (H2; trocável por Oracle/PostgreSQL). |
 | Interface | Controllers REST + front estático | API demonstrável e telas. |
 | Integração | `BotExterno`, `BotLocal`, `ColetorBarueri`, `ModeloEspera` | Bot de suporte, painel de Barueri e modelo de ML. |

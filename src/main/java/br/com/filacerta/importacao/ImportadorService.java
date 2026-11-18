@@ -27,9 +27,13 @@ public class ImportadorService {
         int novos = 0;
         for (UnidadeImportada u : unidades) {
             if (!existentes.add(chave(u.nome(), u.latitude(), u.longitude()))) continue;
-            estabelecimentos.save(new Estabelecimento(u.nome(), u.categoria(), u.endereco(), u.bairro(),
-                    u.latitude(), u.longitude(), guiches(u), tempoBaseMin(u)));
-            novos++;
+            try {
+                estabelecimentos.save(new Estabelecimento(u.nome(), u.categoria(), u.endereco(), u.bairro(),
+                        u.latitude(), u.longitude(), guiches(u), tempoBaseMin(u)));
+                novos++;
+            } catch (br.com.filacerta.domain.RegraDeDominioException invalida) {
+                // dado ruim vindo da fonte aberta (nome vazio, coordenada fora do mapa...): ignora so esta unidade
+            }
         }
         return novos;
     }

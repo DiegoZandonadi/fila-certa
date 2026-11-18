@@ -62,10 +62,14 @@ public class Ticket {
     public Ticket(String id, String codigo, Estabelecimento estabelecimento, String nomeCliente,
                   boolean prioritario, ModoDeslocamento modo, LocalDateTime criadoEm,
                   Double latitude, Double longitude, Double distanciaKm) {
+        if (estabelecimento == null) throw new RegraDeDominioException("O ticket precisa de um estabelecimento.");
+        if (criadoEm == null) throw new RegraDeDominioException("O ticket precisa de uma data de criacao.");
+        if (nomeCliente == null || nomeCliente.isBlank()) throw new RegraDeDominioException("Informe o nome do cliente.");
+        if (nomeCliente.trim().length() > 60) throw new RegraDeDominioException("Nome muito longo (maximo de 60 caracteres).");
         this.id = id;
         this.codigo = codigo;
         this.estabelecimento = estabelecimento;
-        this.nomeCliente = nomeCliente;
+        this.nomeCliente = nomeCliente.trim();
         this.prioritario = prioritario;
         this.modo = modo;
         this.criadoEm = criadoEm;
@@ -80,20 +84,74 @@ public class Ticket {
     public String getNomeCliente() { return nomeCliente; }
     public boolean isPrioritario() { return prioritario; }
     public StatusTicket getStatus() { return status; }
-    public void setStatus(StatusTicket status) { this.status = status; }
     public ModoDeslocamento getModo() { return modo; }
     public LocalDateTime getCriadoEm() { return criadoEm; }
     public LocalDateTime getChamadoEm() { return chamadoEm; }
-    public void setChamadoEm(LocalDateTime chamadoEm) { this.chamadoEm = chamadoEm; }
     public LocalDateTime getFinalizadoEm() { return finalizadoEm; }
-    public void setFinalizadoEm(LocalDateTime finalizadoEm) { this.finalizadoEm = finalizadoEm; }
     public Integer getGuiche() { return guiche; }
-    public void setGuiche(Integer guiche) { this.guiche = guiche; }
     public Double getDuracaoPrevistaMin() { return duracaoPrevistaMin; }
-    public void setDuracaoPrevistaMin(Double duracaoPrevistaMin) { this.duracaoPrevistaMin = duracaoPrevistaMin; }
     public Double getDistanciaKm() { return distanciaKm; }
     public Double getLatitude() { return latitude; }
     public Double getLongitude() { return longitude; }
+
+    // ------------------------------------------------------------------ ciclo de vida (as regras moram aqui)
+    //   AGUARDANDO --chamar--> CHAMADO --finalizar--> ATENDIDO
+    //        |                    \--marcarAusente--> AUSENTE
+    //        \--cancelar--> CANCELADO
+
+    public boolean aguardando() { return status == StatusTicket.AGUARDANDO; }
+
+    public boolean chamado() { return status == StatusTicket.CHAMADO; }
+
+    /** Um guiche chama este cliente. Exige que ele esteja aguardando e que o guiche exista no estabelecimento. */
+    public void chamar(int numeroGuiche, LocalDateTime agora) {
+        exigir(StatusTicket.AGUARDANDO, "Só é possível chamar quem está aguardando.");
+        if (numeroGuiche < 1 || numeroGuiche > estabelecimento.getGuiches()) {
+            throw new RegraDeDominioException("Guichê inexistente neste estabelecimento: " + numeroGuiche);
+        }
+        this.status = StatusTicket.CHAMADO;
+        this.guiche = numeroGuiche;
+        this.chamadoEm = agora;
+    }
+
+    public void finalizar(LocalDateTime agora) {
+        exigir(StatusTicket.CHAMADO, "Só é possível finalizar um atendimento em andamento.");
+        this.status = StatusTicket.ATENDIDO;
+        this.finalizadoEm = agora;
+    }
+
+    public void marcarAusente(LocalDateTime agora) {
+        exigir(StatusTicket.CHAMADO, "Só é possível marcar ausência de quem foi chamado.");
+        this.status = StatusTicket.AUSENTE;
+        this.finalizadoEm = agora;
+    }
+
+    /** O cliente desiste: so e possivel enquanto aguarda (depois de chamado, o guiche ja esta ocupado). */
+    public void cancelar(LocalDateTime agora) {
+        exigir(StatusTicket.AGUARDANDO, "Só é possível sair de uma fila enquanto você está aguardando.");
+        this.status = StatusTicket.CANCELADO;
+        this.finalizadoEm = agora;
+    }
+
+    /** Duracao sorteada pelo simulador; quando preenchida, o atendimento termina sozinho. */
+    public void definirDuracaoPrevistaMin(double minutos) {
+        if (minutos <= 0) throw new RegraDeDominioException("A duracao prevista deve ser positiva.");
+        this.duracaoPrevistaMin = minutos;
+    }
+
+    /** Carga de historico: um atendimento que ja aconteceu por inteiro (usado pela base inicial). */
+    public void registrarAtendimentoHistorico(int numeroGuiche, LocalDateTime chamadoEm, LocalDateTime finalizadoEm) {
+        if (chamadoEm.isBefore(criadoEm) || finalizadoEm.isBefore(chamadoEm)) {
+            throw new RegraDeDominioException("Datas do atendimento fora de ordem (criado <= chamado <= finalizado).");
+        }
+        exigir(StatusTicket.AGUARDANDO, "O historico so pode ser registrado em um ticket novo.");
+        chamar(numeroGuiche, chamadoEm);
+        finalizar(finalizadoEm);
+    }
+
+    private void exigir(StatusTicket esperado, String mensagem) {
+        if (status != esperado) throw new RegraDeDominioException(mensagem);
+    }
 
     /** O cliente se mexeu: recalcula de onde ele esta vindo (usado no "hora de sair"). */
     public void atualizarLocalizacao(Double latitude, Double longitude, Double distanciaKm, ModoDeslocamento modo) {

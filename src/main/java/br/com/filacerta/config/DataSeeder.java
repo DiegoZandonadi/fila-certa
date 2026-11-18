@@ -127,10 +127,7 @@ public class DataSeeder implements CommandLineRunner {
         Ticket t = new Ticket(UUID.randomUUID().toString(), e.getCategoria().getPrefixo() + String.format("%03d", random.nextInt(900) + 100),
                 e, "Cliente", random.nextInt(12) == 0, ModoDeslocamento.values()[random.nextInt(3)], criado, null, null, km);
         LocalDateTime chamado = criado.plusSeconds((long) (espera * 60));
-        t.setChamadoEm(chamado);
-        t.setFinalizadoEm(chamado.plusSeconds((long) (servico * 60)));
-        t.setGuiche(1 + random.nextInt(e.getGuiches()));
-        t.setStatus(StatusTicket.ATENDIDO);
+        t.registrarAtendimentoHistorico(1 + random.nextInt(e.getGuiches()), chamado, chamado.plusSeconds((long) (servico * 60)));
         return t;
     }
 

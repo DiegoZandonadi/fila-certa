@@ -90,7 +90,7 @@ public class SimuladorFila {
         for (Ticket t : tickets.findByEstabelecimentoIdAndStatus(e.getId(), StatusTicket.CHAMADO)) {
             if (t.getDuracaoPrevistaMin() == null) {
                 // sorteia a duracao do atendimento (varia de 60% a 160% da media)
-                t.setDuracaoPrevistaMin(e.getTempoMedioBaseMin() * (0.6 + random.nextDouble()));
+                t.definirDuracaoPrevistaMin(e.getTempoMedioBaseMin() * (0.6 + random.nextDouble()));
                 tickets.save(t);
             }
             LocalDateTime fim = t.getChamadoEm().plusSeconds((long) (t.getDuracaoPrevistaMin() * 60));
