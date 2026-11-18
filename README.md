@@ -15,9 +15,9 @@ Global Solution 2026.2 · CitizenTech · Engenharia de Software (2º ano) · dis
 | **Cidadão beneficiado** | Quem precisa de atendimento de urgência na rede pública e não sabe quanto vai esperar em cada unidade **(descrever a pessoa entrevistada)** |
 | **Problema, em uma frase** | Pessoas gastam horas em filas de pronto-atendimento sem saber qual unidade está mais vazia nem quando sair de casa, enquanto outras unidades ficam lotadas. |
 | **Como funciona** | O cidadão vê a espera prevista em cada unidade, entra na fila de onde estiver e o app cruza **tempo de espera × localização** para avisar a hora exata de sair. |
-| **O que cada parte faz** | **Java (esta aplicação):** domínio da fila, API REST, painel do atendente, métricas e assistente. **Data Science:** regressão linear (espera em 15 min) e logística (chance de espera longa), integradas em `/api/ml`. **Database:** modelo relacional da fila. **Agile:** backlog e retrospectiva. **AR-VR / Dynamic Programming / Network:** demais partes da mesma solução **(preencher)**. |
+| **O que cada parte faz** | **Java (esta aplicação):** domínio da fila, API REST, painel do atendente, métricas e assistente. **Data Science:** regressão linear e logística com dados reais de Barueri (espera típica do horário e chance de espera longa), integradas em `/api/ml`; a previsão de 15 min aguarda a coleta contínua. **Database:** modelo relacional da fila. **Agile:** backlog e retrospectiva. **AR-VR / Dynamic Programming / Network:** demais partes da mesma solução **(preencher)**. |
 | **Link do repositório** | https://github.com/DiegoZandonadi/fila-certa |
-| **Indicador de impacto** | **Minutos de fila economizados por atendimento** = `min(deslocamento, espera)` (já calculado e exibido pelo app) e **% de atendimentos em que a espera real ficou abaixo do previsto**. |
+| **Indicador de impacto** | **Minutos de fila economizados por atendimento** = `min(deslocamento, espera)`: o app calcula e mostra em cada unidade ("Economia de X min") e no resumo do ticket concluído. |
 | **ODS conectados** | **ODS 3** (Saúde e bem-estar: acesso mais rápido ao atendimento), **ODS 10** (Redução das desigualdades: informação a quem não pode "esperar para ver"), **ODS 11** (Cidades sustentáveis: serviços públicos melhor distribuídos) e **ODS 9** (Inovação e infraestrutura digital). |
 
 **Integrantes**
@@ -36,15 +36,16 @@ Sem a Fila Certa, o tempo até ser atendido é `deslocamento + espera`. Com ela 
 
 ## Rodando
 
-Requisitos: **Java 17+**.
+Requisitos: **Java 17+** e internet na primeira execução (baixa as dependências). O Maven Wrapper dispensa instalar o Maven.
 
 ```bash
-mvn spring-boot:run
+./mvnw spring-boot:run        # Windows (PowerShell/cmd): .\mvnw.cmd spring-boot:run
 ```
 
-ou, com o jar já gerado (`mvn package`):
+ou, gerando o jar (executa os testes):
 
 ```bash
+./mvnw package                # Windows: .\mvnw.cmd package
 java -jar target/fila-certa-1.0.0.jar
 ```
 
@@ -56,7 +57,7 @@ Abra <http://localhost:8080>. Sem nada para instalar: usa H2 em memória.
 java -jar target/fila-certa-1.0.0.jar --spring.profiles.active=arquivo
 ```
 
-Testes: `mvn test` (inclui a verificação de que o Java reproduz o scikit-learn).
+Testes: `./mvnw test` (15 testes: regras da fila e concorrência, importador, bot, leitura do painel de Barueri e a verificação de que o Java reproduz o scikit-learn).
 
 ## Telas
 
@@ -81,6 +82,7 @@ br.com.filacerta
 ├─ repository/   Spring Data JPA
 ├─ service/      FilaService (regras), MetricasService, DistanciaService, SimuladorFila
 │  └─ previsao/  PrevisorTempoEspera  ← ponto de extensão (fila local)
+├─ importacao/   OverpassClient (OpenStreetMap), ImportadorService, /api/importacao
 ├─ ml/           Coleta de Barueri, ModeloEspera (regressões do notebook), PrevisaoService, /api/ml
 ├─ bot/          BotService → BotExterno (HTTP) | BotLocal (regras, fallback)
 ├─ web/          Controllers REST + DTOs + tratamento de erros
@@ -95,7 +97,7 @@ O **modelo de domínio** (diagramas e responsabilidades) está em [docs/modelo-d
 |---|---|---|
 | GET | `/api/estabelecimentos?lat&lng&modo&categoria` | Lista ordenada por (deslocamento + espera) |
 | GET/POST | `/api/importacao/osm?cidade=` | Pré-visualiza / importa estabelecimentos reais de uma cidade |
-| POST | `/api/estabelecimentos/{id}/fila` | Entra na fila → ticket (`201`) |
+| POST | `/api/estabelecimentos/{id}/fila` | Entra na fila → ticket (`201`). O campo opcional `chave` (UUID) torna o reenvio seguro: repetir o pedido devolve o mesmo ticket |
 | GET | `/api/estabelecimentos/{id}/painel` | Guichês + fila (atendente) |
 | POST | `/api/estabelecimentos/{id}/chamar-proximo` | Chama o próximo |
 | GET | `/api/tickets/{id}` | Ticket com posição, espera, trajeto e "saia em" |
@@ -153,7 +155,7 @@ Descartados e corrigidos (contagens no notebook): conversão de `"1 h e 36 min"`
 
 Os dois modelos são **lineares**: o Java usa só intercepto, coeficientes e padronizador e reproduz o scikit-learn (testes `ModeloEsperaParidadeTest`, tolerância 1e-6).
 
-> **Correção feita no notebook original:** `"1 h e 36 min"` era lido como **1 minuto**. O painel real tem muitas esperas assim; a versão em `ml/` converte para 96 min. O original em Downloads não foi alterado.
+> **Correção feita no notebook original:** `"1 h e 36 min"` era lido como **1 minuto**. O painel real tem muitas esperas assim; a versão em `ml/` converte para 96 min. O notebook original do grupo não foi alterado.
 
 ## Integração do bot de suporte
 
@@ -191,9 +193,9 @@ Endereço do bot: `filacerta.bot.url` em `application.properties` (padrão `http
 
 ## Publicar online (celular)
 
-Há um `Dockerfile` pronto: no **Render**, crie um *Web Service* a partir do repositório com runtime **Docker**. O link HTTPS permite o GPS real e "Adicionar à tela inicial" no celular (o app tem manifesto PWA)
+Há um `Dockerfile` pronto: no **Render**, crie um *Web Service* a partir do repositório com runtime **Docker**. O link HTTPS permite o GPS real e "Adicionar à tela inicial" no celular (o app tem manifesto PWA).
 
-Bibliotecas do front-end (via CDN, versões fixas): Leaflet 1.9.4 e Leaflet.markercluster 1.5.3 (mapas), Lucide 0.469 (ícones) e Chart.js 4.4.1 (gráficos); fonte IBM Plex Sans..
+Bibliotecas do front-end (via CDN, versões fixas): Leaflet 1.9.4 e Leaflet.markercluster 1.5.3 (mapas), Lucide 0.469 (ícones) e Chart.js 4.4.1 (gráficos); fonte IBM Plex Sans.
 
 ## Trocar o banco
 
