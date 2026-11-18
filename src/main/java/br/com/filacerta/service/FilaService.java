@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -120,7 +121,12 @@ public class FilaService {
         if (req.latitude() != null && req.longitude() != null) {
             km = distancia.km(req.latitude(), req.longitude(), e.getLatitude(), e.getLongitude());
         }
-        Ticket t = novoTicket(e, req.nome().trim(), req.prioritario(), req.modo(), req.latitude(), req.longitude(), km);
+        String chave = chaveValida(req.chave());
+        if (chave != null) {
+            Optional<Ticket> existente = tickets.findById(chave);
+            if (existente.isPresent()) return visao(existente.get()); // pedido repetido: nao cria outro ticket
+        }
+        Ticket t = novoTicket(chave, e, req.nome().trim(), req.prioritario(), req.modo(), req.latitude(), req.longitude(), km);
         return visao(t);
     }
 
@@ -196,10 +202,15 @@ public class FilaService {
     @Transactional
     public synchronized Ticket novoTicket(Estabelecimento e, String nome, boolean prioritario, ModoDeslocamento modo,
                                           Double lat, Double lng, Double km) {
+        return novoTicket(null, e, nome, prioritario, modo, lat, lng, km);
+    }
+
+    private Ticket novoTicket(String id, Estabelecimento e, String nome, boolean prioritario, ModoDeslocamento modo,
+                              Double lat, Double lng, Double km) {
         LocalDateTime agora = relogio.agora();
         long hoje = tickets.countByEstabelecimentoIdAndCriadoEmAfter(e.getId(), agora.toLocalDate().atStartOfDay());
         String codigo = e.getCategoria().getPrefixo() + String.format("%03d", hoje + 1);
-        Ticket t = new Ticket(UUID.randomUUID().toString(), codigo, e, nome, prioritario,
+        Ticket t = new Ticket(id != null ? id : UUID.randomUUID().toString(), codigo, e, nome, prioritario,
                 modo == null ? ModoDeslocamento.TRANSPORTE : modo, agora, lat, lng, km);
         return tickets.save(t);
     }
@@ -317,6 +328,15 @@ public class FilaService {
     private Ticket buscarTicket(String id) {
         return tickets.findById(id)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Ticket não encontrado."));
+    }
+
+    private static String chaveValida(String chave) {
+        if (chave == null) return null;
+        try {
+            return UUID.fromString(chave.trim()).toString();
+        } catch (IllegalArgumentException ex) {
+            return null; // chave fora do formato: ignora e gera um id novo
+        }
     }
 
     private static Integer minutos(Double v) {

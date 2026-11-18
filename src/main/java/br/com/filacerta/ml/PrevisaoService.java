@@ -39,33 +39,37 @@ public class PrevisaoService {
     private final LeituraEsperaRepository leituras;
     private final ColetorBarueri coletor;
     private final ModeloEspera modelo;
+    /** Modelo de perfil: espera tipica por unidade/setor/horario, treinado com o historico real (Wayback 2018-2026). */
+    private final ModeloEspera perfil;
 
     public PrevisaoService(LeituraEsperaRepository leituras, ColetorBarueri coletor, ObjectMapper json,
-                           @Value("${filacerta.ml.modelo-path:}") String caminhoExterno) {
+                           @Value("${filacerta.ml.modelo-path:}") String caminhoExterno,
+                           @Value("${filacerta.ml.perfil-path:}") String perfilExterno) {
         this.leituras = leituras;
         this.coletor = coletor;
-        this.modelo = carregar(json, caminhoExterno);
+        this.modelo = carregar(json, caminhoExterno, "ml/modelo.json", "15 min");
+        this.perfil = carregar(json, perfilExterno, "ml/modelo-perfil.json", "perfil");
     }
 
-    private static ModeloEspera carregar(ObjectMapper json, String caminhoExterno) {
+    private static ModeloEspera carregar(ObjectMapper json, String caminhoExterno, String recurso, String rotulo) {
         try {
             if (caminhoExterno != null && !caminhoExterno.isBlank()) {
                 ModeloEspera m = json.readValue(Files.readString(Path.of(caminhoExterno)), ModeloEspera.class);
-                log.info("Modelo de ML carregado de {} (treino: {}).", caminhoExterno, m.getFonteTreino());
+                log.info("Modelo de ML ({}) carregado de {} (treino: {}).", rotulo, caminhoExterno, m.getFonteTreino());
                 return m;
             }
-            ClassPathResource res = new ClassPathResource("ml/modelo.json");
+            ClassPathResource res = new ClassPathResource(recurso);
             if (!res.exists()) {
-                log.warn("ml/modelo.json nao encontrado: usando baseline (espera futura = espera atual).");
+                log.warn("{} nao encontrado: modelo '{}' desativado.", recurso, rotulo);
                 return null;
             }
             try (InputStream in = res.getInputStream()) {
                 ModeloEspera m = json.readValue(in, ModeloEspera.class);
-                log.info("Modelo de ML carregado do classpath (treino: {}).", m.getFonteTreino());
+                log.info("Modelo de ML ({}) carregado do classpath (treino: {}).", rotulo, m.getFonteTreino());
                 return m;
             }
         } catch (IOException | RuntimeException e) {
-            log.error("Falha ao carregar o modelo de ML: {}. Usando baseline.", e.getMessage());
+            log.error("Falha ao carregar o modelo de ML ({}): {}. Modelo desativado.", rotulo, e.getMessage());
             return null;
         }
     }
@@ -128,8 +132,21 @@ public class PrevisaoService {
                 prob = Math.round(p.probLonga() * 100) / 100.0;
                 origem = esperaPassada == null ? "modelo-sem-tendencia" : "modelo";
             }
+            Integer tipico = null;
+            Double probTipica = null;
+            if (perfil != null) {
+                Map<String, Double> xp = new HashMap<>();
+                xp.put("hora_sen", Math.sin(2 * Math.PI * hora / 24));
+                xp.put("hora_cos", Math.cos(2 * Math.PI * hora / 24));
+                xp.put("fim_de_semana", ultimo.getDayOfWeek().getValue() >= 6 ? 1.0 : 0.0);
+                xp.put("sintomas", (double) ClassificadorLocal.sintomas(l.getLocal()));
+                ModeloEspera.Previsao tp = perfil.prever(xp, unidade, setor);
+                tipico = (int) Math.round(tp.esperaFuturaMin());
+                probTipica = Math.round(tp.probLonga() * 100) / 100.0;
+            }
             String nivel = previsto <= 10 ? "VERDE" : previsto < limiar ? "AMARELO" : "VERMELHO";
-            previsoes.add(new PrevisaoLocal(l.getLocal(), unidade, setor, atual, esperaPassada, tendencia, previsto, prob, nivel, origem));
+            previsoes.add(new PrevisaoLocal(l.getLocal(), unidade, setor, atual, esperaPassada, tendencia, previsto, prob, nivel, origem,
+                    tipico, probTipica));
         }
         previsoes.sort(Comparator.comparing(PrevisaoLocal::unidade).thenComparing(PrevisaoLocal::setor).thenComparing(PrevisaoLocal::local));
 
@@ -165,14 +182,15 @@ public class PrevisaoService {
         if (modelo == null) {
             aviso = "Modelo não carregado: mostrando a espera atual como previsão (baseline).";
         } else if (modelo.treinadoComDadosSimulados()) {
-            aviso = "Modelo de demonstração treinado com dados SIMULADOS. Treine o notebook com dados reais e troque o ml/modelo.json.";
+            aviso = "A previsão de 15 min usa um modelo treinado com dados SIMULADOS (demonstração); ela precisa da coleta ao vivo para ser treinada com dados reais. A espera típica do horário usa dados reais.";
         } else {
             aviso = null;
         }
         return new MetaIa(modelo != null, modelo == null ? null : modelo.getFonteTreino(),
                 modelo != null && modelo.treinadoComDadosSimulados(), modelo == null ? null : modelo.getGeradoEm(),
                 horizonte, limiar, ultimo, leituras.count(), coletor.isHabilitado(),
-                modelo == null ? Map.of() : modelo.getMetricas(), aviso);
+                modelo == null ? Map.of() : modelo.getMetricas(), aviso,
+                perfil != null, perfil == null ? null : perfil.getFonteTreino(), perfil == null ? Map.of() : perfil.getMetricas());
     }
 
     private static long distancia(LeituraEspera l, LocalDateTime alvo) {

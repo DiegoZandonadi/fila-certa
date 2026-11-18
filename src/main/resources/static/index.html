@@ -1,150 +1,196 @@
 <!doctype html>
-<html lang="pt-BR" data-theme="dark">
+<html lang="pt-BR" data-theme="light">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Fila Certa — chegue na hora, nunca na fila</title>
-  <meta name="description" content="Entre na fila de onde estiver. A Fila Certa cruza o tempo de espera com a sua localização e avisa a hora exata de sair.">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' rx='14' fill='%23c4ff4d'/%3E%3Ccircle cx='11' cy='24' r='3.5' fill='%230b1400' opacity='.4'/%3E%3Ccircle cx='21' cy='24' r='4.5' fill='%230b1400' opacity='.65'/%3E%3Ccircle cx='34' cy='24' r='9' fill='none' stroke='%230b1400' stroke-width='3.5'/%3E%3Cpath d='M29.5 24.5l3.3 3.3 5.4-6.4' fill='none' stroke='%230b1400' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <title>Fila Certa</title>
+  <meta name="description" content="Entre na fila de onde estiver. A Fila Certa cruza o tempo de espera com a sua localização e avisa a hora de sair.">
+  <meta name="theme-color" content="#0f766e">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/svg+xml" href="icon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-  <link rel="manifest" href="manifest.webmanifest">
-  <meta name="theme-color" content="#060913">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
 
-<header class="topbar">
-  <a class="brand" href="#descobrir" data-go="descobrir" aria-label="Fila Certa">
-    <svg viewBox="0 0 48 48" aria-hidden="true">
-      <rect width="48" height="48" rx="14" fill="#c4ff4d"/>
-      <circle cx="11" cy="24" r="3.5" fill="#0b1400" opacity=".4"/>
-      <circle cx="21" cy="24" r="4.5" fill="#0b1400" opacity=".65"/>
-      <circle cx="34" cy="24" r="9" fill="none" stroke="#0b1400" stroke-width="3.5"/>
-      <path d="M29.5 24.5l3.3 3.3 5.4-6.4" fill="none" stroke="#0b1400" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
-    </svg>
-    <span class="wordmark">Fila<b>Certa</b><small>chegue na hora</small></span>
-  </a>
+<div class="shell">
+  <aside class="sidebar">
+    <a class="brand" href="#descobrir" data-go="descobrir" aria-label="Fila Certa">
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+        <rect width="32" height="32" rx="8" fill="currentColor"/>
+        <circle cx="8" cy="16" r="2.4" fill="#fff" opacity=".45"/>
+        <circle cx="14.5" cy="16" r="3" fill="#fff" opacity=".7"/>
+        <circle cx="23" cy="16" r="6" fill="none" stroke="#fff" stroke-width="2.4"/>
+        <path d="M20.2 16.2l2 2 3.6-4.2" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span class="brand-name">Fila Certa</span>
+    </a>
 
-  <nav class="nav" aria-label="Seções">
-    <button data-go="descobrir" class="active">📡 Descobrir</button>
-    <button data-go="ticket">🎟️ Meu ticket <span class="dot hidden" id="navDot"></span></button>
-    <button data-go="painel">🧑‍💼 Painel</button>
-    <button data-go="ia">🧠 Previsão IA</button>
-    <button data-go="metricas">📊 Métricas</button>
-  </nav>
+    <nav class="menu" aria-label="Seções">
+      <button data-go="descobrir" class="active"><i data-lucide="map-pin"></i><span>Descobrir</span></button>
+      <button data-go="ticket"><i data-lucide="ticket"></i><span>Meu ticket</span><i class="dot hidden" id="navDot"></i></button>
+      <button data-go="painel"><i data-lucide="layout-dashboard"></i><span>Painel</span></button>
+      <button data-go="ia"><i data-lucide="activity"></i><span>Previsão</span></button>
+      <button data-go="metricas"><i data-lucide="chart-column"></i><span>Métricas</span></button>
+    </nav>
 
-  <div class="tools">
-    <button class="pill" id="demoPill" title="Piloto automático: simula clientes chegando e guichês atendendo">
-      <span class="live"></span><span id="demoText">Demo ao vivo</span>
-    </button>
-    <button class="icon-btn" id="themeBtn" aria-label="Alternar tema">🌙</button>
+    <div class="side-foot">
+      <button class="switch-row" id="demoPill" role="switch" aria-checked="true" title="Simula clientes chegando e guichês atendendo">
+        <span class="switch"><i></i></span>
+        <span class="switch-label"><b id="demoText">Simulação ativa</b><small id="demoSub">Fila de demonstração</small></span>
+      </button>
+      <button class="theme-btn" id="themeBtn" aria-label="Alternar tema"><i data-lucide="moon"></i><span id="themeLabel">Tema escuro</span></button>
+    </div>
+  </aside>
+
+  <div class="main-col">
+    <header class="topbar">
+      <a class="brand brand-sm" href="#descobrir" data-go="descobrir" aria-label="Fila Certa">
+        <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="currentColor"/><circle cx="8" cy="16" r="2.4" fill="#fff" opacity=".45"/><circle cx="14.5" cy="16" r="3" fill="#fff" opacity=".7"/><circle cx="23" cy="16" r="6" fill="none" stroke="#fff" stroke-width="2.4"/><path d="M20.2 16.2l2 2 3.6-4.2" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span class="brand-name">Fila Certa</span>
+      </a>
+      <button class="icon-btn" id="themeBtn2" aria-label="Alternar tema"><i data-lucide="moon"></i></button>
+    </header>
+
+    <main>
+      <!-- ============================================================ DESCOBRIR -->
+      <section class="view" id="view-descobrir">
+        <div class="page-head">
+          <div>
+            <h1>Encontre a fila certa</h1>
+            <p>Veja a espera de cada unidade, entre na fila de onde estiver e saia de casa só na hora certa.</p>
+          </div>
+          <div class="seg" id="modoSeg" role="group" aria-label="Como você vai">
+            <button data-modo="A_PE"><i data-lucide="footprints"></i>A pé</button>
+            <button data-modo="TRANSPORTE" class="active"><i data-lucide="bus"></i>Transporte</button>
+            <button data-modo="CARRO"><i data-lucide="car"></i>Carro</button>
+          </div>
+        </div>
+
+        <div class="controls">
+          <div class="search">
+            <i data-lucide="search"></i>
+            <input id="busca" type="search" placeholder="Buscar unidade, bairro ou endereço" autocomplete="off" aria-label="Buscar unidade">
+            <button id="buscaLimpar" class="hidden" aria-label="Limpar busca" type="button"><i data-lucide="x"></i></button>
+          </div>
+          <div class="search origem">
+            <i data-lucide="navigation"></i>
+            <input id="local" type="search" placeholder="Sua localização: endereço, bairro ou CEP" autocomplete="off" aria-label="Sua localização">
+            <button id="localBuscar" aria-label="Buscar endereço" type="button"><i data-lucide="corner-down-left"></i></button>
+            <div class="sugestoes hidden" id="sugestoes" role="listbox"></div>
+          </div>
+        </div>
+        <div class="zonas" role="group" aria-label="Atalhos de região">
+          <span>Estou na região:</span>
+          <button data-zona="centro">Centro</button>
+          <button data-zona="oeste">Oeste</button>
+          <button data-zona="leste">Leste</button>
+          <button data-zona="norte">Norte</button>
+          <button data-zona="sul">Sul</button>
+        </div>
+
+        <div class="grid-discover">
+          <div class="map-card">
+            <div class="map-toolbar">
+              <div class="tabs" id="catChips"></div>
+              <button class="btn btn-secondary btn-sm" id="geoBtn"><i data-lucide="locate-fixed"></i>Minha localização</button>
+            </div>
+            <div id="map" role="application" aria-label="Mapa das unidades"></div>
+            <div class="map-foot">
+              <span id="locInfo"></span>
+              <span class="legend"><i class="ok"></i>até 10 min<i class="warn"></i>até 25<i class="bad"></i>mais de 25</span>
+            </div>
+          </div>
+
+          <div class="list-col">
+            <div class="list-head"><h2>Unidades</h2><span class="muted" id="contagem">ordenadas por deslocamento + espera</span></div>
+            <div class="list" id="lista"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================ MEU TICKET -->
+      <section class="view hidden" id="view-ticket">
+        <div class="page-head">
+          <div><h1>Meu ticket</h1><p>Acompanhe sua posição e saiba a hora de sair. Atualiza sozinho.</p></div>
+        </div>
+        <div id="ticketEmpty" class="panel empty hidden"></div>
+        <div id="ticketLayout" class="ticket-grid hidden">
+          <div id="ticketMain"></div>
+          <div class="side-stack">
+            <div class="panel">
+              <div class="panel-head"><h2>Trajeto</h2>
+                <div class="seg seg-icons" id="modoTicket" role="group" aria-label="Modo de deslocamento">
+                  <button data-modo="A_PE" title="A pé"><i data-lucide="footprints"></i></button>
+                  <button data-modo="TRANSPORTE" title="Transporte"><i data-lucide="bus"></i></button>
+                  <button data-modo="CARRO" title="Carro"><i data-lucide="car"></i></button>
+                </div>
+              </div>
+              <div id="mapMini"></div>
+              <p class="hint" id="rotaInfo"></p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================ PAINEL -->
+      <section class="view hidden" id="view-painel">
+        <div class="page-head">
+          <div><h1>Painel do atendente</h1><p>Chame o próximo, acompanhe os guichês e finalize atendimentos. Cada atendimento alimenta a previsão de espera.</p></div>
+          <select class="input select" id="painelSel" aria-label="Unidade"></select>
+        </div>
+        <div id="painelBody"></div>
+      </section>
+
+      <!-- ============================================================ PREVISAO -->
+      <section class="view hidden" id="view-ia">
+        <div class="page-head">
+          <div><h1>Previsão de espera</h1><p>Espera prevista para daqui a 15 minutos nos Prontos-Atendimentos de Barueri, calculada com dados públicos da Prefeitura e os modelos do grupo.</p></div>
+          <button class="btn btn-secondary btn-sm" id="iaColetar"><i data-lucide="refresh-cw"></i>Coletar agora</button>
+        </div>
+        <div id="iaBody"></div>
+      </section>
+
+      <!-- ============================================================ METRICAS -->
+      <section class="view hidden" id="view-metricas">
+        <div class="page-head">
+          <div><h1>Métricas</h1><p>Tempo de espera e localização: quanto as pessoas esperam e de onde vêm. É a base do previsor e do cálculo de hora de sair.</p></div>
+        </div>
+        <div id="metricasBody"></div>
+      </section>
+    </main>
   </div>
-</header>
-
-<main>
-  <!-- ===================================================== DESCOBRIR -->
-  <section class="view" id="view-descobrir">
-    <div class="view-head">
-      <div>
-        <h1>Não fique na fila.<br><em>Chegue na hora certa.</em></h1>
-        <p>O radar mostra onde estão as filas mais curtas perto de você. Entre na fila de onde estiver e a gente avisa a hora exata de sair.</p>
-      </div>
-      <div class="seg" id="modoSeg" role="group" aria-label="Como você vai">
-        <button data-modo="A_PE">🚶 A pé</button>
-        <button data-modo="TRANSPORTE" class="active">🚌 Transporte</button>
-        <button data-modo="CARRO">🚗 Carro</button>
-      </div>
-    </div>
-
-    <div class="grid-discover">
-      <div class="card radar-wrap">
-        <div class="radar-head">
-          <div class="chips" id="catChips"></div>
-          <button class="btn btn-ghost btn-sm" id="geoBtn">📍 Usar minha localização</button>
-        </div>
-        <div class="radar" id="radar">
-          <div class="sweep"></div>
-          <svg id="radarSvg" viewBox="0 0 600 600" role="img" aria-label="Radar de filas ao seu redor"></svg>
-        </div>
-        <div class="radar-foot">
-          <span id="locInfo">Arraste o ponto <b style="color:var(--accent-text)">VOCÊ</b> para simular outra localização.</span>
-          <span class="legend">
-            <span><i style="background:var(--ok)"></i>até 10 min</span>
-            <span><i style="background:var(--warn)"></i>até 25</span>
-            <span><i style="background:var(--bad)"></i>25+</span>
-          </span>
-        </div>
-      </div>
-
-      <div>
-        <div class="eyebrow" style="margin:0 4px 10px">Ordenado por <b style="color:var(--accent-text)">deslocamento + espera</b></div>
-        <div class="list" id="lista"></div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ===================================================== MEU TICKET -->
-  <section class="view hidden" id="view-ticket"></section>
-
-  <!-- ===================================================== PAINEL -->
-  <section class="view hidden" id="view-painel">
-    <div class="view-head">
-      <div>
-        <h1>Painel do <em>atendente</em></h1>
-        <p>Chame o próximo da fila, acompanhe os guichês e finalize atendimentos. Cada atendimento alimenta a previsão de tempo de espera.</p>
-      </div>
-      <select class="input" id="painelSel" style="max-width:340px" aria-label="Estabelecimento"></select>
-    </div>
-    <div id="painelBody"></div>
-  </section>
-
-  <!-- ===================================================== PREVISAO IA -->
-  <section class="view hidden" id="view-ia">
-    <div class="view-head">
-      <div>
-        <h1>Onde ir <em>agora?</em></h1>
-        <p>Previsão da espera daqui a 15 minutos nos Prontos-Atendimentos de Barueri, com dados públicos da Prefeitura e os modelos de Machine Learning do grupo.</p>
-      </div>
-      <button class="btn btn-ghost btn-sm" id="iaColetar">🔄 Coletar agora</button>
-    </div>
-    <div id="iaBody"></div>
-  </section>
-
-  <!-- ===================================================== METRICAS -->
-  <section class="view hidden" id="view-metricas">
-    <div class="view-head">
-      <div>
-        <h1>As duas métricas que <em>movem a fila</em></h1>
-        <p>Tempo de espera e localização: quanto as pessoas esperam e de onde elas vêm. É a base do previsor e do "hora de sair".</p>
-      </div>
-    </div>
-    <div id="metricasBody"></div>
-  </section>
-</main>
+</div>
 
 <div id="toasts" aria-live="polite"></div>
 <div id="modalRoot"></div>
 
-<!-- ===================================================== BOT -->
-<button class="bot-fab" id="botFab" aria-label="Abrir assistente"><span class="face">💬</span><span>Assistente</span></button>
-<aside class="bot hidden" id="bot" aria-label="Assistente Fila Certa">
+<!-- ============================================================ SUPORTE -->
+<button class="bot-fab" id="botFab" aria-label="Abrir suporte"><i data-lucide="message-circle"></i><span>Suporte</span></button>
+<aside class="bot hidden" id="bot" aria-label="Suporte Fila Certa">
   <div class="bot-head">
-    <div class="face">🤖</div>
-    <div><b>Assistente Fila Certa</b><small><i></i><span id="botOrigem">online</span></small></div>
-    <button class="icon-btn" id="botClose" aria-label="Fechar">✕</button>
+    <div class="bot-avatar"><i data-lucide="headset"></i></div>
+    <div><b>Suporte Fila Certa</b><small><i></i><span id="botOrigem">Online</span></small></div>
+    <button class="icon-btn" id="botClose" aria-label="Fechar"><i data-lucide="x"></i></button>
   </div>
   <div class="msgs" id="msgs"></div>
   <div class="quick" id="quick"></div>
   <form class="bot-input" id="botForm">
-    <input class="input" id="botInput" placeholder="Pergunte sobre sua fila…" autocomplete="off" maxlength="500">
-    <button class="btn btn-primary" type="submit" aria-label="Enviar">➤</button>
+    <input class="input" id="botInput" placeholder="Digite sua dúvida" autocomplete="off" maxlength="500">
+    <button class="btn btn-primary" type="submit" aria-label="Enviar"><i data-lucide="send"></i></button>
   </form>
 </aside>
 
+<script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="js/api.js"></script>
-<script src="js/radar.js"></script>
+<script src="js/map.js"></script>
 <script src="js/views.js"></script>
 <script src="js/bot.js"></script>
 <script src="js/app.js"></script>

@@ -1,0 +1,146 @@
+[
+  {
+    "num": {
+      "hora_sen": -0.4422886902190014,
+      "hora_cos": 0.8968727415326883,
+      "fim_de_semana": 0.0,
+      "sintomas": 0.0
+    },
+    "unidade": "MUTINGA",
+    "setor": "ATENDIMENTO",
+    "reg": -1.7255924486209686,
+    "prob": 0.022576150048742485
+  },
+  {
+    "num": {
+      "hora_sen": 0.44228869021900125,
+      "hora_cos": 0.8968727415326884,
+      "fim_de_semana": 0.0,
+      "sintomas": 0.0
+    },
+    "unidade": "PAI",
+    "setor": "PEDIATRIA",
+    "reg": 18.572457228834253,
+    "prob": 0.6884689377127627
+  },
+  {
+    "num": {
+      "hora_sen": -0.4226182617407,
+      "hora_cos": 0.9063077870366497,
+      "fim_de_semana": 0.0,
+      "sintomas": 0.0
+    },
+    "unidade": "MUTINGA",
+    "setor": "PEDIATRIA",
+    "reg": 10.282550824871015,
+    "prob": 0.270872870057374
+  },
+  {
+    "num": {
+      "hora_sen": 0.44228869021900125,
+      "hora_cos": 0.8968727415326884,
+      "fim_de_semana": 0.0,
+      "sintomas": 0.0
+    },
+    "unidade": "PAI",
+    "setor": "TRIAGEM",
+    "reg": 9.645967630279216,
+    "prob": 0.23738633836424716
+  },
+  {
+    "num": {
+      "hora_sen": -0.38268343236508956,
+      "hora_cos": 0.9238795325112868,
+      "fim_de_semana": 0.0,
+      "sintomas": 0.0
+    },
+    "unidade": "IMPERIAL",
+    "setor": "TRIAGEM",
+    "reg": 7.336136225196647,
+    "prob": 0.1367818729647045
+  },
+  {
+    "num": {
+      "hora_sen": -0.40274668985873663,
+      "hora_cos": 0.9153114791194474,
+      "fim_de_semana": 0.0,
+      "sintomas": 0.0
+    },
+    "unidade": "MUTINGA",
+    "setor": "PEDIATRIA",
+    "reg": 10.207576909427168,
+    "prob": 0.26947693713294846
+  },
+  {
+    "num": {
+      "hora_sen": -0.7518398074789772,
+      "hora_cos": 0.6593458151000691,
+      "fim_de_semana": 1.0,
+      "sintomas": 0.0
+    },
+    "unidade": "CAMARGO",
+    "setor": "PEDIATRIA",
+    "reg": 19.136052057323433,
+    "prob": 0.48569991943679924
+  },
+  {
+    "num": {
+      "hora_sen": -0.38268343236508956,
+      "hora_cos": 0.9238795325112868,
+      "fim_de_semana": 0.0,
+      "sintomas": 0.0
+    },
+    "unidade": "CAMARGO",
+    "setor": "TRIAGEM",
+    "reg": 10.228026207170368,
+    "prob": 0.1424301735476522
+  },
+  {
+    "num": {
+      "hora_sen": -0.25881904510252157,
+      "hora_cos": 0.9659258262890681,
+      "fim_de_semana": 0.0,
+      "sintomas": 0.0
+    },
+    "unidade": "MUTINGA",
+    "setor": "ATENDIMENTO",
+    "reg": -2.4103930039526844,
+    "prob": 0.021171259139122236
+  },
+  {
+    "num": {
+      "hora_sen": -0.4226182617407,
+      "hora_cos": 0.9063077870366497,
+      "fim_de_semana": 0.0,
+      "sintomas": 0.0
+    },
+    "unidade": "IMPERIAL",
+    "setor": "ORTOPEDIA",
+    "reg": 17.767052577554974,
+    "prob": 0.6070520438419779
+  },
+  {
+    "num": {
+      "hora_sen": -0.38268343236508956,
+      "hora_cos": 0.9238795325112868,
+      "fim_de_semana": 0.0,
+      "sintomas": 0.0
+    },
+    "unidade": "ENGENHO NOVO",
+    "setor": "ATENDIMENTO",
+    "reg": 3.6104167294603453,
+    "prob": 0.054418306457593615
+  },
+  {
+    "num": {
+      "hora_sen": -0.40274668985873663,
+      "hora_cos": 0.9153114791194474,
+      "fim_de_semana": 0.0,
+      "sintomas": 0.0
+    },
+    "unidade": "IMPERIAL",
+    "setor": "GINECOLOGIA",
+    "reg": 10.265071999964498,
+    "prob": 0.288402348981061
+  }
+]

@@ -24,6 +24,12 @@ public class ApiExceptionHandler {
         return corpo(HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage());
     }
 
+    /** Dois envios simultaneos do mesmo pedido: o primeiro vence; o cliente consulta o ticket pela chave. */
+    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
+    public ResponseEntity<Map<String, Object>> conflito(org.springframework.dao.DataIntegrityViolationException ex) {
+        return corpo(HttpStatus.CONFLICT, "Pedido repetido. Consulte o seu ticket.");
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> validacao(MethodArgumentNotValidException ex) {
         String msg = ex.getBindingResult().getFieldErrors().stream()

@@ -71,7 +71,8 @@ public class BotExterno implements BotAtendimento {
         contexto.put("estabelecimentos", fila.listar(p.latitude(), p.longitude(), p.modo(), null));
 
         Map<String, Object> corpo = new LinkedHashMap<>();
-        corpo.put("mensagem", p.mensagem());
+        corpo.put("message", p.mensagem());   // campo exigido pelo bot (POST /chat)
+        corpo.put("mensagem", p.mensagem());  // o mesmo texto em portugues, para outros bots
         corpo.put("sessaoId", p.sessaoId());
         corpo.put("ticketId", p.ticketId());
         corpo.put("contexto", contexto);
@@ -90,7 +91,8 @@ public class BotExterno implements BotAtendimento {
                 .body(new ParameterizedTypeReference<Map<String, Object>>() {});
         String texto = extrair(retorno);
         if (texto == null || texto.isBlank()) throw new IllegalStateException("Bot externo respondeu sem texto");
-        return new BotResposta(texto, "bot-externo", List.of());
+        Object categoria = retorno.get("category");
+        return new BotResposta(texto, "bot-externo", List.of(), categoria instanceof String c ? c : null);
     }
 
     private static String extrair(Map<String, Object> retorno) {

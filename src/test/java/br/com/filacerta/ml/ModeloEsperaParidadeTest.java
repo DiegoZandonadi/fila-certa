@@ -19,12 +19,21 @@ class ModeloEsperaParidadeTest {
 
     @Test
     void javaReproduzOsModelosDoNotebook() throws Exception {
+        conferir("ml/modelo.json", "ml/paridade.json");
+    }
+
+    @Test
+    void javaReproduzOModeloDePerfilTreinadoComDadosReais() throws Exception {
+        conferir("ml/modelo-perfil.json", "ml/paridade-perfil.json");
+    }
+
+    private void conferir(String arquivoModelo, String arquivoCasos) throws Exception {
         ModeloEspera modelo;
-        try (InputStream in = new ClassPathResource("ml/modelo.json").getInputStream()) {
+        try (InputStream in = new ClassPathResource(arquivoModelo).getInputStream()) {
             modelo = json.readValue(in, ModeloEspera.class);
         }
         JsonNode casos;
-        try (InputStream in = new ClassPathResource("ml/paridade.json").getInputStream()) {
+        try (InputStream in = new ClassPathResource(arquivoCasos).getInputStream()) {
             casos = json.readTree(in);
         }
         assertThat(casos.size()).isGreaterThan(5);

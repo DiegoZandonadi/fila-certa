@@ -21,7 +21,10 @@ public final class IaDtos {
             int previstoMin,
             Double probLonga,
             String nivel,
-            String origem) {
+            String origem,
+            /** Espera tipica daquela unidade/setor neste horario (modelo de perfil, dados reais). */
+            Integer tipicoMin,
+            Double probTipicaLonga) {
     }
 
     public record MetaIa(
@@ -35,7 +38,10 @@ public final class IaDtos {
             long leiturasTotal,
             boolean coletaAtiva,
             Map<String, Double> metricas,
-            String aviso) {
+            String aviso,
+            boolean perfilAtivo,
+            String perfilFonte,
+            Map<String, Double> perfilMetricas) {
     }
 
     public record IaView(

@@ -47,7 +47,9 @@ public final class Dtos {
             boolean prioritario,
             Double latitude,
             Double longitude,
-            ModoDeslocamento modo) {
+            ModoDeslocamento modo,
+            /** UUID gerado pelo cliente. Se o pedido for repetido (ex.: resposta perdida), devolve o mesmo ticket. */
+            String chave) {
     }
 
     public record LocalizacaoRequest(
@@ -138,7 +140,11 @@ public final class Dtos {
             ModoDeslocamento modo) {
     }
 
-    public record BotResposta(String resposta, String origem, List<String> sugestoes) {
+    /** categoria: a do bot de suporte (emergency, medical_request, app_feature, public_service, not_found), se houver. */
+    public record BotResposta(String resposta, String origem, List<String> sugestoes, String categoria) {
+        public BotResposta(String resposta, String origem, List<String> sugestoes) {
+            this(resposta, origem, sugestoes, null);
+        }
     }
 
     public record SimulacaoRequest(boolean habilitada) {

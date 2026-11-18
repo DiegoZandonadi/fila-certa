@@ -27,10 +27,31 @@ public class BotLocal implements BotAtendimento {
         this.fila = fila;
     }
 
+    private static final List<String> EMERGENCIA = List.of(
+            "dor no peito", "falta de ar", "desmai", "sangramento", "acidente", "convuls", "infarto", "overdose", "parada cardiaca");
+    private static final List<String> DADOS_AO_VIVO = List.of(
+            "quanto tempo", "tempo de espera", "quanto falta", "espera", "quando devo sair", "hora de sair", "quando sair",
+            "minha posicao", "na minha frente", "quantas pessoas", "fila mais rapida", "melhor fila", "menos fila", "mais rapida", "qual a fila");
+
+    /** Possivel emergencia: a resposta e sempre encaminhar para urgencia, sem avaliar gravidade. */
+    public boolean emergencia(String mensagem) {
+        return tem(normalizar(mensagem), EMERGENCIA.toArray(new String[0]));
+    }
+
+    /** Pergunta sobre dados que so o sistema tem (ticket, posicao, espera, trajeto, fila mais rapida). */
+    public boolean dadoAoVivo(String mensagem) {
+        return tem(normalizar(mensagem), DADOS_AO_VIVO.toArray(new String[0]));
+    }
+
     @Override
     public BotResposta responder(BotPergunta p) {
         String msg = normalizar(p.mensagem());
         TicketView ticket = buscarTicket(p.ticketId());
+
+        if (emergencia(p.mensagem())) {
+            return resp("Busque atendimento de urgência imediatamente, como uma UPA ou pronto-socorro, ou acione o SAMU pelo número 192. "
+                    + "Não consigo avaliar a gravidade da situação por aqui.");
+        }
 
         if (tem(msg, "oi", "ola", "bom dia", "boa tarde", "boa noite", "e ai")) {
             return resp("Oi! Eu sou o assistente da Fila Certa. Posso te dizer quanto falta, quando sair de casa "
@@ -61,7 +82,11 @@ public class BotLocal implements BotAtendimento {
             return melhorFila(p);
         }
         if (tem(msg, "obrigad", "valeu", "tchau")) {
-            return resp("Por nada! Boa fila — quer dizer, boa sem-fila. 😉");
+            return resp("Por nada. Se precisar de mais alguma coisa, é só chamar.");
+        }
+        if (tem(msg, "ubs", "upa", "sus", "posto de saude", "pronto socorro", "pronto atendimento")) {
+            return resp("Não consegui consultar a base de informações sobre UBS, UPA e SUS agora. Tente de novo em instantes "
+                    + "ou procure o suporte humano. Se for uma urgência, ligue 192 (SAMU) ou vá à UPA mais próxima.");
         }
         return resp("Não tenho certeza se entendi. Posso ajudar com tempo de espera, hora de sair, sua posição na fila "
                 + "ou recomendar o lugar mais rápido perto de você.");

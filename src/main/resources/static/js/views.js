@@ -1,43 +1,57 @@
-/* Renderizacao das telas. Tudo que vem da API passa por esc() antes de ir para o HTML. */
+/* Renderização das telas. Tudo que vem da API passa por esc() antes de ir para o HTML. */
 
 // ------------------------------------------------------------------ DESCOBRIR
-const CATEGORIAS = [['', 'Todos'], ['SAUDE', '🏥 Saúde'], ['BANCO', '🏦 Bancos'], ['GOVERNO', '🏛️ Público'], ['CARTORIO', '📜 Cartório'], ['RESTAURANTE', '🍽️ Comer']];
+const CATEGORIAS_ROTULO = { SAUDE: 'Saúde', BANCO: 'Bancos', GOVERNO: 'Serviços públicos', CARTORIO: 'Cartórios', RESTAURANTE: 'Restaurantes' };
 
+/** Abas só das categorias que existem nos dados carregados. */
 function renderChips() {
-  $('#catChips').innerHTML = CATEGORIAS.map(([v, t]) =>
-    `<button class="chip${(S.categoria || '') === v ? ' active' : ''}" data-cat="${v}">${t}</button>`).join('');
+  const cats = (S.catsDisponiveis || Object.keys(CATEGORIAS_ROTULO)).map((c) => [c, CATEGORIAS_ROTULO[c] || c]);
+  $('#catChips').innerHTML = [['', 'Todas'], ...cats].map(([v, t]) =>
+    `<button class="${(S.categoria || '') === v ? 'active' : ''}" data-cat="${v}">${t}</button>`).join('');
 }
 
 function renderLista() {
+  if (!mudou('lista', [S.lista, S.modo, S.selecionado, S.busca])) return;
   const el = $('#lista');
-  if (!S.lista.length) { el.innerHTML = `<div class="card card-pad muted">Nenhum local nesta categoria.</div>`; return; }
-  const maxT = Math.max(...S.lista.map((e) => e.tempoPresencialMin || e.esperaMin), 1);
-  const entrada = S.listaPronta ? '' : ' enter'; // anima so na primeira vez (a lista atualiza a cada 2s)
-  S.listaPronta = true;
-  el.innerHTML = S.lista.map((e, i) => {
-    const cor = NIVEL_COR[e.nivel];
+  const lista = visiveis();
+  $('#contagem').textContent = S.busca.trim()
+    ? `${lista.length} de ${S.lista.length} unidades`
+    : 'ordenadas por deslocamento + espera';
+  if (!lista.length) {
+    el.innerHTML = S.busca.trim()
+      ? `<div class="panel empty-sm"><b>Nenhuma unidade encontrada para "${esc(S.busca.trim())}"</b><p>Confira o nome ou procure pelo bairro. A busca ignora acentos.</p><button class="btn btn-secondary btn-sm" data-act="limpar-busca">Limpar busca</button></div>`
+      : '<div class="panel panel-pad muted">Nenhuma unidade nesta categoria.</div>';
+    return;
+  }
+  const maxT = Math.max(...lista.map((e) => e.tempoPresencialMin ?? e.esperaMin), 1);
+  el.innerHTML = lista.map((e) => {
     const temLoc = e.tempoFilaCertaMin != null;
     const pres = e.tempoPresencialMin ?? e.esperaMin;
     const certa = e.tempoFilaCertaMin ?? e.esperaMin;
-    return `<article class="ecard${entrada}${e.recomendado ? ' reco' : ''}${S.selecionado === e.id ? ' sel' : ''}" data-id="${e.id}" style="animation-delay:${i * 40}ms">
-      <div class="ecard-top">
-        <div class="emoji">${CAT[e.categoria] || '📍'}</div>
-        <div><h3>${esc(e.nome)}</h3><div class="where">${esc(e.bairro)} · ${esc(e.categoriaRotulo)}${e.distanciaKm != null ? ' · ' + fmtKm(e.distanciaKm) : ''}</div></div>
-        <div class="wait"><b style="color:${cor}">${e.esperaMin}<small style="font-size:.9rem"> min</small></b><span>de espera</span></div>
-      </div>
-      <div class="compare">
-        <div class="bar-row"><span>Indo e esperando lá</span><div class="bar"><i style="width:${(pres / maxT) * 100}%;background:var(--muted)"></i></div><b>${fmtMin(pres)}</b></div>
-        <div class="bar-row"><span style="color:var(--accent-text);font-weight:700">Com a Fila Certa</span><div class="bar"><i style="width:${(certa / maxT) * 100}%;background:var(--accent)"></i></div><b>${fmtMin(certa)}</b></div>
-      </div>
-      <div class="ecard-actions">
+    return `<article class="eitem${S.selecionado === e.id ? ' sel' : ''}" data-id="${e.id}">
+      <div class="eitem-head">
+        <div class="cat-ic">${ic(CAT_ICON[e.categoria] || 'map-pin')}</div>
         <div>
-          <div class="meta"><span>👥 ${e.pessoasNaFila} na fila</span><span>🪟 ${e.guiches - e.guichesLivres}/${e.guiches} guichês</span>${temLoc ? `<span>${MODOS[S.modo].icon} ${fmtMin(e.deslocamentoMin)}</span>` : ''}</div>
-          ${temLoc && e.economiaMin > 0 ? `<div class="save-tag">⚡ você economiza ${fmtMin(e.economiaMin)}</div>` : ''}
+          ${e.recomendado ? '<span class="badge primary">Melhor opção agora</span>' : ''}
+          <h3>${esc(e.nome)}</h3>
+          <div class="where">${esc(e.bairro)} · ${esc(e.categoriaRotulo)}${e.distanciaKm != null ? ' · ' + fmtKm(e.distanciaKm) : ''}</div>
+        </div>
+        <div class="wait"><b class="lvl-${e.nivel}">${e.esperaMin}<small> min</small></b><span>de espera</span></div>
+      </div>
+      <div class="cmp">
+        <div class="bar-row"><span>Ir e esperar lá</span><div class="bar"><i style="width:${(pres / maxT) * 100}%"></i></div><b>${fmtMin(pres)}</b></div>
+        <div class="bar-row us"><span>Com a Fila Certa</span><div class="bar"><i style="width:${(certa / maxT) * 100}%"></i></div><b>${fmtMin(certa)}</b></div>
+      </div>
+      <div class="eitem-foot">
+        <div>
+          <div class="meta"><span>${ic('users')}${e.pessoasNaFila} na fila</span><span>${ic('monitor')}${e.guiches - e.guichesLivres}/${e.guiches} guichês</span>${temLoc ? `<span>${ic(MODOS[S.modo].icon)}${fmtMin(e.deslocamentoMin)} de trajeto</span>` : ''}</div>
+          ${temLoc && e.economiaMin > 0 ? `<div class="saving">${ic('timer')}Economia de ${fmtMin(e.economiaMin)}</div>` : ''}
         </div>
         <button class="btn btn-primary btn-sm" data-join="${e.id}">Entrar na fila</button>
       </div>
     </article>`;
   }).join('');
+  icones();
 }
 
 function abrirModalEntrar(id) {
@@ -47,289 +61,381 @@ function abrirModalEntrar(id) {
   const root = $('#modalRoot');
   const saiEm = Math.max(0, e.esperaMin - (e.deslocamentoMin || 0) - 2);
   root.innerHTML = `<div class="overlay" id="overlay"><form class="modal" id="joinForm" role="dialog" aria-label="Entrar na fila">
-    <div class="eyebrow">${CAT[e.categoria]} ${esc(e.categoriaRotulo)}</div>
-    <h2>${esc(e.nome)}</h2>
-    <p class="sub">${esc(e.endereco)} — ${esc(e.bairro)}</p>
-    <div class="plan">
-      <div><b style="color:${NIVEL_COR[e.nivel]}">${e.esperaMin}'</b><span>espera</span></div>
-      <div><b>${fmtMin(e.deslocamentoMin)}</b><span>trajeto</span></div>
-      <div><b style="color:var(--accent-text)">${fmtMin(saiEm)}</b><span>sair em</span></div>
+    <div class="modal-head">
+      <span class="eyebrow">${esc(e.categoriaRotulo)}</span>
+      <h2>${esc(e.nome)}</h2>
+      <p>${esc(e.endereco)} — ${esc(e.bairro)}</p>
     </div>
-    ${temTicket ? `<p class="muted" style="font-size:.82rem;margin-bottom:12px">⚠️ Você já tem um ticket ativo. Este será um novo ticket.</p>` : ''}
-    <div class="field"><label for="jNome">SEU NOME</label><input class="input" id="jNome" maxlength="60" required placeholder="Como devemos te chamar?" value="${esc(store.get('nome', ''))}"></div>
-    <label class="check"><input type="checkbox" id="jPrio"> <span>Atendimento prioritário <span class="muted">(idoso, gestante, PcD)</span></span></label>
-    <div class="modal-actions"><button type="button" class="btn btn-ghost" id="jCancel">Agora não</button><button class="btn btn-primary" type="submit">Garantir minha vez</button></div>
+    <div class="modal-body">
+      <div class="plan">
+        <div><b class="lvl-${e.nivel}">${e.esperaMin} min</b><span>Espera</span></div>
+        <div><b>${fmtMin(e.deslocamentoMin)}</b><span>Trajeto</span></div>
+        <div><b style="color:var(--primary)">${fmtMin(saiEm)}</b><span>Sair em</span></div>
+      </div>
+      ${temTicket ? `<p class="note">${ic('info')}<span>Você já tem um ticket ativo. Este será um novo ticket.</span></p>` : ''}
+      <div class="field"><label for="jNome">Seu nome</label><input class="input" id="jNome" maxlength="60" required placeholder="Como devemos te chamar?" value="${esc(store.get('nome', ''))}"></div>
+      <label class="check"><input type="checkbox" id="jPrio"><span><b>Atendimento prioritário</b><br><span class="muted">Idosos, gestantes, pessoas com deficiência e lactantes.</span></span></label>
+    </div>
+    <div class="modal-foot"><button type="button" class="btn btn-secondary" id="jCancel">Cancelar</button><button class="btn btn-primary" type="submit" id="jOk">Garantir minha vez</button></div>
   </form></div>`;
+  icones();
   $('#jNome').focus();
   const fechar = () => { root.innerHTML = ''; };
   $('#jCancel').onclick = fechar;
   $('#overlay').addEventListener('mousedown', (ev) => { if (ev.target.id === 'overlay') fechar(); });
+  // A chave identifica este pedido: se a resposta se perder, reenviar (ou consultar) nao cria um segundo ticket.
+  const chave = window.crypto && crypto.randomUUID ? crypto.randomUUID() : null;
+  const concluir = (t) => {
+    beep([660, 990]);
+    fechar();
+    S.assinaturas.ticket = null;
+    definirTicket(t, true);
+    toast(`Ticket ${t.codigo} emitido. Avisaremos a hora de sair.`, 'ok');
+    irPara('ticket');
+  };
   $('#joinForm').onsubmit = async (ev) => {
     ev.preventDefault();
     const nome = $('#jNome').value.trim();
     if (!nome) return;
-    const btn = ev.submitter || ev.target.querySelector('[type="submit"]'); btn.disabled = true;
+    const btn = $('#jOk'); btn.disabled = true; btn.textContent = 'Enviando…';
+    store.set('nome', nome);
     try {
-      store.set('nome', nome);
-      const t = await api(`/estabelecimentos/${id}/fila`, { method: 'POST', body: { nome, prioritario: $('#jPrio').checked, latitude: S.loc.lat, longitude: S.loc.lng, modo: S.modo } });
-      beep([660, 990]);
-      fechar();
-      definirTicket(t, true);
-      toast(`Ticket ${t.codigo} emitido! Vamos te avisar a hora de sair.`, 'ok', '🎟️');
-      irPara('ticket');
-    } catch (err) { toast(err.message, 'err', '⚠️'); btn.disabled = false; }
+      const t = await api(`/estabelecimentos/${id}/fila`, { method: 'POST', body: { nome, prioritario: $('#jPrio').checked, latitude: S.loc.lat, longitude: S.loc.lng, modo: S.modo, chave } });
+      concluir(t);
+    } catch (err) {
+      // O servidor pode ter criado o ticket e a resposta ter se perdido: confere pela chave antes de mostrar erro.
+      let criado = null;
+      if (chave) { try { criado = await api(`/tickets/${chave}`, { timeout: 6000 }); } catch (_) { /* nao existe */ } }
+      if (criado) { concluir(criado); return; }
+      toast(`${err.message} Seu pedido não foi registrado; tente novamente.`, 'err');
+      btn.disabled = false; btn.textContent = 'Garantir minha vez';
+    }
   };
 }
 
 // ------------------------------------------------------------------ MEU TICKET
 const TITULOS = {
-  AGUARDE: ['Relaxa, você tem tempo livre', 'ok'],
-  PREPARE_SE: ['Prepare-se para sair', 'warn'],
-  SAIA_AGORA: ['Hora de sair!', 'bad'],
-  SUA_VEZ: ['É a sua vez!', 'bad'],
-  CONCLUIDO: ['Atendimento concluído', 'ok'],
-  CANCELADO: ['Você saiu da fila', 'muted'],
-  AUSENTE: ['Você perdeu a vez', 'bad'],
+  AGUARDE: 'Você tem tempo livre',
+  PREPARE_SE: 'Prepare-se para sair',
+  SAIA_AGORA: 'Hora de sair',
+  SUA_VEZ: 'É a sua vez',
+  CONCLUIDO: 'Atendimento concluído',
+  CANCELADO: 'Você saiu da fila',
+  AUSENTE: 'Você perdeu a vez',
 };
+const STATUS_ROTULO = { AGUARDANDO: 'Aguardando', CHAMADO: 'Chamado', ATENDIDO: 'Atendido', CANCELADO: 'Cancelado', AUSENTE: 'Ausente' };
+const STATUS_COR = { AGUARDANDO: 'primary', CHAMADO: 'ok', ATENDIDO: 'ok', CANCELADO: '', AUSENTE: 'bad' };
 
 function renderTicket() {
-  const root = $('#view-ticket');
   const t = S.ticket;
+  const vazio = $('#ticketEmpty'), layout = $('#ticketLayout');
   if (!t) {
-    root.innerHTML = `<div class="card empty"><div class="big">🎟️</div><h2>Você ainda não está em nenhuma fila</h2>
-      <p>Escolha um local no radar, entre na fila e relaxe. A gente calcula a hora exata de você sair.</p>
-      <button class="btn btn-primary btn-big" data-go="descobrir">📡 Encontrar uma fila</button></div>`;
+    layout.classList.add('hidden');
+    vazio.classList.remove('hidden');
+    vazio.innerHTML = `<div class="empty-ic">${ic('ticket')}</div><h2>Você não está em nenhuma fila</h2>
+      <p>Escolha uma unidade no mapa e entre na fila. Calculamos a hora certa de você sair.</p>
+      <button class="btn btn-primary btn-lg" data-go="descobrir">${ic('map-pin')}Encontrar uma fila</button>`;
+    icones();
     return;
   }
-  const ativo = t.status === 'AGUARDANDO' || t.status === 'CHAMADO';
-  const [titulo] = TITULOS[t.aviso] || ['Seu ticket', ''];
-  const modo = MODOS[t.modo] || MODOS.TRANSPORTE;
+  vazio.classList.add('hidden');
+  layout.classList.remove('hidden');
+  if (!MAPA.mini) iniciarMapaMini(); else MAPA.mini.invalidateSize();
 
-  // anel de progresso
-  const C = 2 * Math.PI * 48;
-  let prog = 1, centro = '<b>✓</b><span>feito</span>';
-  if (t.status === 'AGUARDANDO') {
-    prog = S.espera0 > 0 ? Math.min(1, Math.max(0.04, 1 - t.esperaMin / S.espera0)) : 0.04;
-    if (t.aviso === 'SAIA_AGORA') centro = '<b>JÁ</b><span>saia agora</span>';
-    else if (t.saiEmMin != null) centro = `<b>${t.saiEmMin}</b><span>min p/ sair</span>`;
-    else centro = `<b>${t.esperaMin}</b><span>min p/ vez</span>`;
-  } else if (t.status === 'CHAMADO') {
-    centro = `<b>${t.guiche}</b><span>guichê</span>`;
+  $$('#modoTicket button').forEach((b) => b.classList.toggle('active', b.dataset.modo === t.modo));
+  const est = S.lista.find((x) => x.id === t.estabelecimentoId) || S.estabTicket;
+
+  if (mudou('ticket', [t, S.espera0])) {
+    const ativo = t.status === 'AGUARDANDO' || t.status === 'CHAMADO';
+    const modo = MODOS[t.modo] || MODOS.TRANSPORTE;
+    let big = '—', rotulo = '';
+    if (t.status === 'AGUARDANDO') {
+      if (t.aviso === 'SAIA_AGORA') { big = 'Agora'; rotulo = 'saia de casa'; }
+      else if (t.saiEmMin != null) { big = t.saiEmMin; rotulo = 'min para sair'; }
+      else { big = t.esperaMin; rotulo = 'min até a sua vez'; }
+    } else if (t.status === 'CHAMADO') { big = t.guiche; rotulo = 'guichê'; }
+    else if (t.status === 'ATENDIDO') { big = t.esperouMin ?? '—'; rotulo = 'min de espera'; }
+
+    let jornada = '';
+    if (t.status === 'AGUARDANDO' && t.deslocamentoMin != null) {
+      const livre = t.saiEmMin || 0, ida = t.deslocamentoMin;
+      const folga = Math.max(0, t.esperaMin - livre - ida);
+      const atraso = Math.max(0, ida + 2 - t.esperaMin);
+      jornada = `<div class="journey"><h3>Plano até a sua vez</h3>
+        <div class="track">
+          ${livre > 0 ? `<div class="seg-free" style="flex:${livre}">Livre ${livre} min</div>` : ''}
+          <div class="seg-go" style="flex:${Math.max(ida, 1)}">${modo.nome} ${ida} min</div>
+          ${folga > 0 ? `<div class="seg-buf" style="flex:${folga}"></div>` : ''}
+        </div>
+        <div class="track-legend"><span>Agora</span><span>${atraso > 0 ? `Você chegaria cerca de ${atraso} min depois da vez` : 'Chegada na hora da sua vez'}</span><span>Sua vez</span></div></div>`;
+    }
+    const resumo = t.status === 'ATENDIDO'
+      ? `<div class="summary">Você esperou <b>${fmtMin(t.esperouMin)}</b>${t.economizouMin ? ` e evitou <b>${fmtMin(t.economizouMin)}</b> de fila no balcão` : ''}. Obrigado por usar a Fila Certa.</div>` : '';
+    const acoes = t.status === 'AGUARDANDO'
+      ? `<button class="btn btn-danger" data-act="cancelar">Sair da fila</button><button class="btn btn-secondary" data-act="simular" id="btnSim">${ic('play')}Simular trajeto</button>`
+      : (!ativo ? `<button class="btn btn-primary" data-go="descobrir">${ic('map-pin')}Nova fila</button>` : '');
+
+    $('#ticketMain').innerHTML = `
+      <div class="panel state-${t.aviso}">
+        <div class="pass-head">
+          <div><span class="eyebrow">Senha</span><div class="pass-code">${esc(t.codigo)}</div></div>
+          <div class="pass-who"><b>${esc(t.nomeCliente)}</b><span>${esc(t.estabelecimentoNome)}</span></div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">${t.prioritario ? '<span class="badge warn">Prioritário</span>' : ''}<span class="badge ${STATUS_COR[t.status]}">${STATUS_ROTULO[t.status]}</span></div>
+        </div>
+        <div class="leave">
+          <div class="leave-num"><b>${big}</b><span>${rotulo}</span></div>
+          <div class="leave-txt"><h2>${TITULOS[t.aviso] || 'Seu ticket'}</h2><p>${esc(t.mensagem)}</p></div>
+        </div>
+        ${resumo}
+        ${t.status === 'AGUARDANDO' ? `<div class="stats">
+          <div class="stat"><b>${t.posicao}º</b><span>Posição</span></div>
+          <div class="stat"><b>${fmtMin(t.esperaMin)}</b><span>Até a sua vez</span></div>
+          <div class="stat"><b>${fmtMin(t.deslocamentoMin)}</b><span>Trajeto${t.distanciaKm != null ? ' · ' + fmtKm(t.distanciaKm) : ''}</span></div>
+        </div>` : ''}
+        ${jornada}
+        ${acoes ? `<div class="pass-actions">${acoes}</div>` : ''}
+      </div>`;
+    $('#rotaInfo').textContent = ativo ? 'Troque o modo de deslocamento ou use "Simular trajeto" para ver a hora de sair mudar.' : 'Ticket encerrado.';
+    icones();
   }
-
-  // jornada: livre -> a caminho -> folga
-  let jornada = '';
-  if (t.status === 'AGUARDANDO' && t.deslocamentoMin != null) {
-    const livre = t.saiEmMin || 0;
-    const ida = t.deslocamentoMin;
-    const folga = Math.max(0, t.esperaMin - livre - ida);
-    const atraso = Math.max(0, ida + 2 - t.esperaMin);
-    jornada = `<div class="journey"><h3>Seu plano até a vez</h3>
-      <div class="track">
-        ${livre > 0 ? `<div class="seg-free" style="flex:${livre}">livre ${livre}'</div>` : ''}
-        <div class="seg-go" style="flex:${Math.max(ida, 1)}">${modo.icon} ${ida}'</div>
-        ${folga > 0 ? `<div class="seg-buf" style="flex:${folga}"></div>` : ''}
-      </div>
-      <div class="track-legend"><span>agora</span><span>${atraso > 0 ? `⚠️ você chega ~${atraso} min depois da vez` : 'chegada na hora da sua vez'}</span><span>sua vez</span></div></div>`;
-  }
-
-  const resumo = t.status === 'ATENDIDO' ? `<div class="summary"><span class="eyebrow">Resumo</span>
-      <b>Você esperou ${fmtMin(t.esperouMin)}${t.economizouMin ? ` e poupou ${fmtMin(t.economizouMin)} de fila no balcão` : ''}.</b>
-      <span class="muted">Obrigado por usar a Fila Certa! Seu atendimento ajuda a deixar a previsão ainda mais certa.</span></div>` : '';
-
-  const acoes = t.status === 'AGUARDANDO'
-    ? `<button class="btn btn-danger" data-act="cancelar">Sair da fila</button><button class="btn btn-ghost" data-act="simular" id="btnSim">▶ Simular trajeto</button>`
-    : (!ativo ? `<button class="btn btn-primary" data-go="descobrir">📡 Nova fila</button>` : '');
-
-  root.innerHTML = `
-    <div class="view-head"><div><h1>Seu <em>ticket</em></h1><p>Atualizado ao vivo. Pode fechar o app e fazer outra coisa: a gente avisa na hora certa.</p></div></div>
-    <div class="ticket-grid">
-      <div class="card pass state-${t.aviso}">
-        <div class="stub">
-          <span class="eyebrow">Senha</span>
-          <div class="code">${esc(t.codigo)}</div>
-          <div class="who">${esc(t.nomeCliente)}</div>
-          <div>${CAT[t.categoria] || ''} ${esc(t.estabelecimentoNome)}</div>
-          ${t.prioritario ? '<span class="tag prio">Prioritário</span>' : ''}
-          <span class="tag">${esc(t.status)}</span>
-        </div>
-        <div class="body">
-          <div class="headline">
-            <div class="ring-wrap"><svg class="ring-svg" viewBox="0 0 120 120"><circle class="ring-bg" cx="60" cy="60" r="48"/><circle class="ring-fg" cx="60" cy="60" r="48" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - prog)}"/></svg><div class="center">${centro}</div></div>
-            <div><h2>${titulo}</h2><p>${esc(t.mensagem)}</p></div>
-          </div>
-          ${t.status === 'AGUARDANDO' ? `<div class="stats">
-            <div class="stat"><b>${t.posicao}º</b><span>sua posição</span></div>
-            <div class="stat"><b>${fmtMin(t.esperaMin)}</b><span>até a sua vez</span></div>
-            <div class="stat"><b>${fmtMin(t.deslocamentoMin)}</b><span>de trajeto${t.distanciaKm != null ? ' · ' + fmtKm(t.distanciaKm) : ''}</span></div>
-          </div>` : ''}
-          ${jornada}${resumo}
-          <div class="actions">${acoes}</div>
-        </div>
-      </div>
-      <div class="side-stack">
-        <div class="card card-pad">
-          <div class="chart-head"><h2>Trajeto</h2>
-            <div class="seg" id="modoTicket">${Object.entries(MODOS).map(([k, m]) => `<button data-modo="${k}" class="${t.modo === k ? 'active' : ''}" title="${m.nome}">${m.icon}</button>`).join('')}</div></div>
-          <div class="map-mini"><svg id="mapMini" aria-label="Mapa do trajeto"></svg></div>
-          <p class="muted" style="font-size:.78rem;margin-top:10px">${ativo ? 'Mude o modo de deslocamento ou use “Simular trajeto” para ver a hora de sair se atualizar.' : 'Ticket encerrado.'}</p>
-        </div>
-      </div>
-    </div>`;
-
-  const e = S.lista.find((x) => x.id === t.estabelecimentoId) || S.estabTicket;
-  if (e) desenharRota($('#mapMini'), S.loc, { lat: e.latitude, lng: e.longitude }, e.nome, CAT[e.categoria] || '📍');
+  if (est) atualizarMapaMini(est);
 }
 
 // ------------------------------------------------------------------ PAINEL
 function renderPainel(p) {
-  const root = $('#painelBody');
+  if (!mudou('painel', p)) return;
   const est = p.estabelecimento;
   const livres = p.guiches.filter((g) => !g.atual).length;
-  root.innerHTML = `
-    <div class="painel-top">
-      <div class="mini-kpis">
-        <div class="stat"><b>${p.fila.length}</b><span>na fila</span></div>
-        <div class="stat"><b>${livres}/${est.guiches}</b><span>guichês livres</span></div>
-        <div class="stat"><b>${fmtMin(est.esperaMin)}</b><span>espera prevista</span></div>
-        <div class="stat"><b>${p.atendidosHoje}</b><span>atendidos hoje</span></div>
-      </div>
-      <button class="btn btn-primary btn-big" data-act="chamar" ${p.fila.length === 0 || livres === 0 ? 'disabled' : ''}>📣 Chamar próximo</button>
+  $('#painelBody').innerHTML = `
+    <div class="kpi-row">
+      <div class="stat"><b>${p.fila.length}</b><span>Na fila</span></div>
+      <div class="stat"><b>${livres}/${est.guiches}</b><span>Guichês livres</span></div>
+      <div class="stat"><b>${fmtMin(est.esperaMin)}</b><span>Espera prevista</span></div>
+      <div class="stat"><b>${p.atendidosHoje}</b><span>Atendidos hoje</span></div>
+      <button class="btn btn-primary btn-lg" data-act="chamar" ${p.fila.length === 0 || livres === 0 ? 'disabled' : ''}>${ic('megaphone')}Chamar próximo</button>
     </div>
     <div class="counters">${p.guiches.map((g) => g.atual
-      ? `<div class="gcard busy"><div class="n"><span>Guichê ${g.numero}</span><span>● atendendo</span></div><div class="cur">${esc(g.atual.codigo)}</div><div>${esc(g.atual.nomeCliente)}</div>
-          <div class="row"><button class="btn btn-primary btn-sm" data-act="finalizar" data-id="${g.atual.id}">Finalizar</button><button class="btn btn-ghost btn-sm" data-act="ausente" data-id="${g.atual.id}">Ausente</button></div></div>`
-      : `<div class="gcard free"><div class="n"><span>Guichê ${g.numero}</span><span>○ livre</span></div><div class="cur">Disponível</div></div>`).join('')}
+      ? `<div class="gcard busy"><div class="n"><span>Guichê ${g.numero}</span><span class="badge ok">Atendendo</span></div><div class="cur">${esc(g.atual.codigo)}</div><div>${esc(g.atual.nomeCliente)}</div>
+          <div class="row"><button class="btn btn-primary btn-sm" data-act="finalizar" data-id="${g.atual.id}">Finalizar</button><button class="btn btn-secondary btn-sm" data-act="ausente" data-id="${g.atual.id}">Ausente</button></div></div>`
+      : `<div class="gcard free"><div class="n"><span>Guichê ${g.numero}</span><span class="badge">Livre</span></div><div class="cur">Disponível</div></div>`).join('')}
     </div>
-    <div class="card card-pad">
-      <div class="chart-head"><h2>Fila de espera</h2><span class="muted" style="font-size:.82rem">prioritários passam na frente</span></div>
-      <div class="qlist">${p.fila.length ? p.fila.map((t) => `<div class="qitem">
-        <span class="pos">${t.posicao}º</span><b class="num">${esc(t.codigo)}</b>
-        <span>${esc(t.nomeCliente)} ${t.prioritario ? '<span class="tag prio">Prior.</span>' : ''}<br><small>${t.distanciaKm != null ? fmtKm(t.distanciaKm) + ' · ' + MODOS[t.modo].icon + ' ' + fmtMin(t.deslocamentoMin) : 'sem localização'}</small></span>
-        <span class="cd">~${fmtMin(t.esperaMin)}</span></div>`).join('') : '<p class="muted">Ninguém aguardando. 🎉</p>'}</div>
+    <div class="panel">
+      <div class="panel-head"><h2>Fila de espera</h2><span class="muted" style="font-size:.8rem">Prioritários passam na frente</span></div>
+      ${p.fila.length ? `<div class="table-wrap"><table class="tbl"><thead><tr><th>Pos.</th><th>Senha</th><th>Cliente</th><th>Origem</th><th class="r">Espera prevista</th></tr></thead><tbody>
+        ${p.fila.map((t) => `<tr><td class="num">${t.posicao}º</td><td class="code">${esc(t.codigo)}</td>
+          <td>${esc(t.nomeCliente)} ${t.prioritario ? '<span class="badge warn">Prioritário</span>' : ''}</td>
+          <td>${t.distanciaKm != null ? `${fmtKm(t.distanciaKm)} · ${MODOS[t.modo].nome}` : '—'}${t.deslocamentoMin != null ? `<small>${fmtMin(t.deslocamentoMin)} de trajeto</small>` : ''}</td>
+          <td class="r num">${fmtMin(t.esperaMin)}</td></tr>`).join('')}</tbody></table></div>`
+        : '<div class="panel-body muted">Ninguém aguardando no momento.</div>'}
     </div>`;
+  icones();
 }
 
-// ------------------------------------------------------------------ METRICAS
-function renderMetricas(m) {
-  const root = $('#metricasBody');
-  const maxH = Math.max(...m.esperaPorHora.map((h) => h.esperaMediaMin), 1);
-  const maxE = Math.max(...m.estabelecimentos.map((e) => e.esperaMediaMin), 1);
-  const maxD = Math.max(...m.estabelecimentos.map((e) => e.distanciaMediaClientesKm), 1);
-  const sel = m.estabelecimentos.slice().sort((a, b) => a.nome.localeCompare(b.nome));
-  root.innerHTML = `
-    <div class="kpis">
-      <div class="kpi" style="--c:var(--accent)"><span class="eyebrow">Atendimentos</span><b>${m.atendimentosTotal.toLocaleString('pt-BR')}</b><p>base histórica + ao vivo</p></div>
-      <div class="kpi" style="--c:var(--warn)"><span class="eyebrow">Espera média</span><b>${fmtDec(m.esperaMediaMin)}<small>min</small></b><p>entre entrar e ser chamado</p></div>
-      <div class="kpi" style="--c:var(--accent-2)"><span class="eyebrow">Distância média</span><b>${fmtDec(m.distanciaMediaClientesKm)}<small>km</small></b><p>de onde o cliente entra na fila</p></div>
-      <div class="kpi" style="--c:var(--ok)"><span class="eyebrow">Na fila agora</span><b>${m.pessoasEmFilaAgora}</b><p>${m.ticketsAtivos} tickets ativos</p></div>
-    </div>
-    <div class="charts">
-      <div class="card card-pad">
-        <div class="chart-head"><h2>⏱️ Espera média por horário</h2>
-          <select class="input" id="metEstab" style="max-width:230px;padding:9px 12px"><option value="">Todos os locais</option>${sel.map((e) => `<option value="${e.id}" ${String(e.id) === S.metricasEstab ? 'selected' : ''}>${esc(e.nome)}</option>`).join('')}</select></div>
-        <div class="vbars">${m.esperaPorHora.map((h) => `<div class="vbar${h.hora === m.melhorHorario ? ' best' : ''}${h.hora === m.piorHorario ? ' worst' : ''}">
-          <i style="height:${(h.esperaMediaMin / maxH) * 100}%"><em>${h.amostras ? Math.round(h.esperaMediaMin) : ''}</em></i><span>${h.hora}h</span></div>`).join('')}</div>
-        <div class="insights">
-          ${m.melhorHorario != null ? `<div class="insight">🟢 Melhor horário: <b>${m.melhorHorario}h</b></div>` : ''}
-          ${m.piorHorario != null ? `<div class="insight">🔴 Evite: <b>${m.piorHorario}h</b></div>` : ''}
-          <div class="insight">🧠 Previsor: <b>${esc(m.previsor)}</b></div>
-        </div>
-      </div>
-      <div class="card card-pad">
-        <div class="chart-head"><h2>📍 Espera por local</h2></div>
-        <div class="hbars">${m.estabelecimentos.map((e) => `<div class="hrow"><div class="top"><span>${esc(e.nome)}</span><span>${fmtDec(e.esperaMediaMin)} min</span></div>
-          <div class="bar"><i style="width:${(e.esperaMediaMin / maxE) * 100}%;background:${e.esperaMediaMin > maxE * 0.66 ? 'var(--bad)' : e.esperaMediaMin > maxE * 0.33 ? 'var(--warn)' : 'var(--ok)'}"></i></div></div>`).join('')}</div>
-        <div class="chart-head" style="margin-top:26px"><h2>🧭 De onde vêm os clientes</h2></div>
-        <div class="hbars">${m.estabelecimentos.slice().sort((a, b) => b.distanciaMediaClientesKm - a.distanciaMediaClientesKm).map((e) => `<div class="hrow"><div class="top"><span>${esc(e.nome)}</span><span>${fmtDec(e.distanciaMediaClientesKm)} km</span></div>
-          <div class="bar"><i style="width:${(e.distanciaMediaClientesKm / maxD) * 100}%;background:var(--accent-2)"></i></div></div>`).join('')}</div>
-      </div>
-    </div>`;
-}
-
-
-// ------------------------------------------------------------------ PREVISAO IA
+// ------------------------------------------------------------------ PREVISÃO (ML)
 const SETOR_ROTULO = { CLINICO: 'Clínico geral', PEDIATRIA: 'Pediatria', ORTOPEDIA: 'Ortopedia', EMERGENCIA: 'Emergência', TRIAGEM: 'Triagem', ATENDIMENTO: 'Atendimento', GINECOLOGIA: 'Ginecologia', ODONTOLOGIA: 'Odontologia', OUTRO: 'Outro' };
 const UNIDADE_ROTULO = { 'ENGENHO NOVO': 'PA Engenho Novo', IMPERIAL: 'PA Imperial', CAMARGO: 'PA Camargo', MUTINGA: 'PA Mutinga', PAA: 'PA Adulto (PAA)', PAI: 'PA Infantil (PAI)', HMB: 'HMB', OUTRA: 'Outra unidade' };
-const NIVEL_IA = { VERDE: 'var(--ok)', AMARELO: 'var(--warn)', VERMELHO: 'var(--bad)' };
 
-// "PRONTO ATENDIMENTO CAMARGO- FAST TRACK - CLINICO" -> "Fast track · clinico" (sem repetir a unidade)
+/** "PRONTO ATENDIMENTO CAMARGO- FAST TRACK - CLINICO" -> "Fast track · clinico" (sem repetir a unidade) */
 function detalheLocal(p) {
   const partes = p.local.split('-').map((x) => x.trim()).filter(Boolean).slice(1)
-    .filter((x) => x.toUpperCase() !== p.unidade && x.toUpperCase() !== 'PAA' && x.toUpperCase() !== 'PAI');
+    .filter((x) => !['PAA', 'PAI', p.unidade].includes(x.toUpperCase()));
   const t = (partes.length ? partes.join(' · ') : SETOR_ROTULO[p.setor] || p.setor).toLowerCase();
   return t.charAt(0).toUpperCase() + t.slice(1);
 }
 
 function chipProb(p, limiar) {
-  if (p.probLonga == null) return '<span class="prob none" title="Sem modelo carregado">—</span>';
+  if (p.probLonga == null) return '<span class="prob" title="Sem modelo carregado">—</span>';
   const pct = Math.round(p.probLonga * 100);
   const cls = pct >= 50 ? 'hi' : pct >= 20 ? 'mid' : 'lo';
   return `<span class="prob ${cls}" title="Chance de a espera passar de ${limiar} min">${pct}%</span>`;
 }
 
-function setaTendencia(t) {
-  if (t == null || t === 0) return '<span class="muted" title="Estável">→</span>';
-  return t > 0 ? `<span style="color:var(--bad)" title="+${t} min em 15 min">↑ ${t}</span>` : `<span style="color:var(--ok)" title="${t} min em 15 min">↓ ${Math.abs(t)}</span>`;
+function tendencia(t) {
+  if (t == null || t === 0) return '<span class="trend muted">estável</span>';
+  return t > 0 ? `<span class="trend t-bad">${ic('trending-up')} +${t}</span>` : `<span class="trend t-ok">${ic('trending-down')} ${t}</span>`;
+}
+
+/** Compara a espera atual com a tipica do horario (modelo de perfil, dados reais). */
+function notaTipico(p) {
+  if (p.tipicoMin == null) return '';
+  const acima = p.esperaAtualMin > p.tipicoMin * 1.5 + 5, abaixo = p.esperaAtualMin <= p.tipicoMin * 0.5 && p.tipicoMin >= 6;
+  const tag = acima ? ' <span class="badge bad">acima do normal</span>' : abaixo ? ' <span class="badge ok">abaixo do normal</span>' : '';
+  return `<small>típico neste horário: ${p.tipicoMin} min${tag}</small>`;
+}
+
+function blocoMetricas(titulo, sub, met) {
+  return `<h2 class="section-title">${titulo} <small>${sub}</small></h2>
+      <div class="panel"><div class="stats" style="border-bottom:0;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
+        <div class="stat"><b>${fmtDec(+met.mae_min.toFixed(1))} min</b><span>Erro médio</span></div>
+        <div class="stat"><b>${fmtDec(+met.mae_baseline_min.toFixed(1))} min</b><span>Erro do baseline</span></div>
+        <div class="stat"><b>${fmtDec(+met.r2.toFixed(2))}</b><span>R² (regressão)</span></div>
+        <div class="stat"><b>${fmtDec(+met.recall.toFixed(2))}</b><span>Recall (longa)</span></div>
+        <div class="stat"><b>${fmtDec(+met.f1.toFixed(2))}</b><span>F1 (longa)</span></div>
+        <div class="stat"><b>${fmtDec(+met.auc.toFixed(2))}</b><span>ROC AUC</span></div></div></div>`;
 }
 
 function renderIA(v) {
+  if (!mudou('ia', v)) return;
   const root = $('#iaBody');
   const m = v.meta;
   const fmtHora = (s) => (s ? new Date(s).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—');
   if (!v.previsoes.length) {
-    root.innerHTML = `<div class="card empty"><div class="big">📡</div><h2>Ainda sem leituras de Barueri</h2>
-      <p>O app coleta o painel da Prefeitura a cada 5 minutos. Toque em “Coletar agora” para buscar a primeira leitura.</p></div>`;
+    root.innerHTML = `<div class="panel empty"><div class="empty-ic">${ic('activity')}</div><h2>Ainda sem leituras de Barueri</h2>
+      <p>O aplicativo consulta o painel da Prefeitura a cada 5 minutos. Use "Coletar agora" para buscar a primeira leitura.</p></div>`;
+    icones();
     return;
   }
   const met = m.metricas || {};
   const porUnidade = {};
   v.previsoes.forEach((p) => { (porUnidade[p.unidade] = porUnidade[p.unidade] || []).push(p); });
   const semTendencia = v.previsoes.some((p) => p.origem === 'modelo-sem-tendencia');
+  const corNivel = { VERDE: 'var(--ok)', AMARELO: 'var(--warn)', VERMELHO: 'var(--bad)' };
 
   root.innerHTML = `
-    ${m.aviso ? `<div class="warn-banner">⚠️ ${esc(m.aviso)}</div>` : ''}
-    <div class="ia-meta">
-      <span class="pill"><span class="live"></span>Leitura de ${fmtHora(m.ultimaLeitura)}</span>
-      <span class="pill">🗂️ ${m.leiturasTotal.toLocaleString('pt-BR')} leituras</span>
-      <span class="pill">⏱️ previsão em ${m.horizonteMin} min</span>
-      <span class="pill">🚦 longa = ${m.limiarLongaMin}+ min</span>
-      ${semTendencia ? '<span class="pill" title="O app precisa de ~15 min de coleta para medir a tendência">📈 acumulando histórico</span>' : ''}
-      <a class="pill" href="/api/ml/dados.csv" download>⬇️ baixar CSV coletado</a>
+    ${m.aviso ? `<div class="banner">${ic('triangle-alert')}<span>${esc(m.aviso)}</span></div>` : ''}
+    <div class="meta-row">
+      <span>${ic('clock')}Leitura de ${fmtHora(m.ultimaLeitura)}</span>
+      <span>${ic('database')}${m.leiturasTotal.toLocaleString('pt-BR')} leituras</span>
+      <span>${ic('timer')}Previsão para ${m.horizonteMin} min</span>
+      <span>${ic('gauge')}Espera longa: ${m.limiarLongaMin} min ou mais</span>
+      ${semTendencia ? `<span title="O aplicativo precisa de cerca de 15 min de coleta para medir a tendência">${ic('trending-up')}Acumulando histórico</span>` : ''}
+      ${m.perfilAtivo ? `<span>${ic('database')}Espera típica: dados reais ${esc((m.perfilFonte || '').replace('real ', ''))}</span>` : ''}
+      <a href="/api/ml/dados.csv" download>${ic('download')}Baixar CSV coletado</a>
     </div>
 
-    <div class="card card-pad ia-alert ${v.alertas.length ? 'on' : ''}">
-      <div class="chart-head"><h2>${v.alertas.length ? '🚨 Risco de espera longa' : '✅ Nenhum setor com risco agora'}</h2><span class="muted" style="font-size:.8rem">chance ≥ 50% de passar de ${m.limiarLongaMin} min</span></div>
-      ${v.alertas.length ? `<div class="alert-list">${v.alertas.map((p) => `<div class="alert-item"><span><b>${esc(UNIDADE_ROTULO[p.unidade] || p.unidade)}</b> · ${esc(detalheLocal(p))}</span><span>${p.esperaAtualMin} → <b>${p.previstoMin} min</b> ${chipProb(p, m.limiarLongaMin)}</span></div>`).join('')}</div>` : '<p class="muted">Quando algum setor passar de 50% de chance, ele aparece aqui para o gestor remanejar equipe.</p>'}
+    <div class="panel alert-panel ${v.alertas.length ? 'on' : ''}">
+      <div class="panel-head"><h2>${v.alertas.length ? 'Risco de espera longa' : 'Nenhum setor em risco agora'}</h2><span class="muted" style="font-size:.8rem">Chance de 50% ou mais de passar de ${m.limiarLongaMin} min</span></div>
+      ${v.alertas.length ? `<div class="table-wrap"><table class="tbl"><tbody>${v.alertas.map((p) => `<tr><td><b>${esc(UNIDADE_ROTULO[p.unidade] || p.unidade)}</b><small>${esc(detalheLocal(p))}</small></td>
+        <td class="r num">${p.esperaAtualMin} <span class="muted">→</span> <b>${p.previstoMin} min</b></td><td class="r">${chipProb(p, m.limiarLongaMin)}</td></tr>`).join('')}</tbody></table></div>`
+        : '<div class="panel-body muted">Quando um setor passar de 50% de chance, ele aparece aqui para o gestor remanejar equipe.</div>'}
     </div>
 
-    <h2 class="sec-title">Onde vale a pena ir agora</h2>
+    <h2 class="section-title">Onde vale a pena ir agora</h2>
     <div class="reco-grid">${Object.entries(v.recomendacoes).map(([setor, lista]) => `
-      <div class="card card-pad reco-card"><div class="eyebrow">${esc(SETOR_ROTULO[setor] || setor)}</div>
-        ${lista.map((p, i) => `<div class="reco-row${i === 0 ? ' best' : ''}"><span class="rk">${i + 1}º</span><span class="nm">${esc(UNIDADE_ROTULO[p.unidade] || p.unidade)}<small class="det">${esc(detalheLocal(p))}</small></span>
-          <span class="vl" style="color:${NIVEL_IA[p.nivel]}">${p.previstoMin}<small> min</small></span>${chipProb(p, m.limiarLongaMin)}</div>`).join('')}
+      <div class="panel"><div class="panel-head"><h2>${esc(SETOR_ROTULO[setor] || setor)}</h2></div>
+        ${lista.map((p, i) => `<div class="reco-row${i === 0 ? ' best' : ''}"><span class="rk">${i + 1}º</span>
+          <span class="nm">${esc(UNIDADE_ROTULO[p.unidade] || p.unidade)}<span class="det">${esc(detalheLocal(p))}</span></span>
+          <span class="vl" style="color:${corNivel[p.nivel]}">${p.previstoMin}<small>min</small></span>${chipProb(p, m.limiarLongaMin)}</div>`).join('')}
       </div>`).join('')}</div>
 
-    <h2 class="sec-title">Todas as unidades <span class="muted" style="font-weight:500;font-size:.85rem">agora → previsto em ${m.horizonteMin} min</span></h2>
+    <h2 class="section-title">Todas as unidades <small>espera agora → prevista em ${m.horizonteMin} min</small></h2>
     <div class="units-grid">${Object.entries(porUnidade).map(([u, linhas]) => {
       const max = Math.max(30, ...linhas.map((p) => Math.max(p.esperaAtualMin, p.previstoMin)));
-      return `<div class="card card-pad"><h3 class="unit-title">${esc(UNIDADE_ROTULO[u] || u)}</h3>
-        ${linhas.map((p) => `<div class="srow" title="${esc(p.local)}">
-          <div class="sname">${esc(detalheLocal(p))}</div>
-          <div class="sbar"><i class="now" style="width:${(p.esperaAtualMin / max) * 100}%"></i><i class="fut" style="width:${(p.previstoMin / max) * 100}%;background:${NIVEL_IA[p.nivel]}"></i></div>
-          <div class="sval num">${p.esperaAtualMin}<span class="muted"> → </span><b style="color:${NIVEL_IA[p.nivel]}">${p.previstoMin}</b></div>
-          <div class="strend">${setaTendencia(p.tendenciaMin)}</div>
-          <div>${chipProb(p, m.limiarLongaMin)}</div></div>`).join('')}
-      </div>`;
+      return `<div class="panel"><div class="panel-head"><h2>${esc(UNIDADE_ROTULO[u] || u)}</h2></div>
+        <div class="table-wrap"><table class="tbl"><tbody>${linhas.map((p) => `<tr title="${esc(p.local)}">
+          <td>${esc(detalheLocal(p))}${notaTipico(p)}</td>
+          <td><div class="mini-bar"><i style="width:${(p.previstoMin / max) * 100}%;background:${corNivel[p.nivel]}"></i></div></td>
+          <td class="r num">${p.esperaAtualMin} <span class="muted">→</span> <b style="color:${corNivel[p.nivel]}">${p.previstoMin}</b></td>
+          <td>${tendencia(p.tendenciaMin)}</td><td class="r">${chipProb(p, m.limiarLongaMin)}</td></tr>`).join('')}</tbody></table></div></div>`;
     }).join('')}</div>
 
-    ${m.modeloAtivo && met.f1 != null ? `<div class="card card-pad" style="margin-top:18px"><div class="chart-head"><h2>🧪 Qualidade do modelo (conjunto de teste)</h2></div>
-      <div class="stats" style="grid-template-columns:repeat(auto-fit,minmax(130px,1fr))">
-        <div class="stat"><b>${fmtDec(+met.mae_min.toFixed(1))}</b><span>erro médio (min)</span></div>
-        <div class="stat"><b>${fmtDec(+met.mae_baseline_min.toFixed(1))}</b><span>erro de "igual a agora"</span></div>
+    ${m.modeloAtivo && met.f1 != null ? `<h2 class="section-title">Qualidade do modelo <small>conjunto de teste · treino: ${esc(m.fonteTreino || '—')} · gerado em ${esc(m.geradoEm || '—')}</small></h2>
+      <div class="panel"><div class="stats" style="border-bottom:0;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
+        <div class="stat"><b>${fmtDec(+met.mae_min.toFixed(1))} min</b><span>Erro médio</span></div>
+        <div class="stat"><b>${fmtDec(+met.mae_baseline_min.toFixed(1))} min</b><span>Erro de "igual a agora"</span></div>
         <div class="stat"><b>${fmtDec(+met.r2.toFixed(2))}</b><span>R² (regressão)</span></div>
-        <div class="stat"><b>${fmtDec(+met.recall.toFixed(2))}</b><span>recall (longa)</span></div>
+        <div class="stat"><b>${fmtDec(+met.recall.toFixed(2))}</b><span>Recall (longa)</span></div>
         <div class="stat"><b>${fmtDec(+met.f1.toFixed(2))}</b><span>F1 (longa)</span></div>
-        <div class="stat"><b>${fmtDec(+met.auc.toFixed(2))}</b><span>ROC AUC</span></div></div>
-      <p class="muted" style="font-size:.78rem;margin-top:10px">Gerado em ${esc(m.geradoEm || '—')} · treino: ${esc(m.fonteTreino || '—')}. Os dados são médias agregadas por setor, não a experiência de cada pessoa.</p></div>` : ''}`;
+        <div class="stat"><b>${fmtDec(+met.auc.toFixed(2))}</b><span>ROC AUC</span></div></div></div>
+      <p class="hint" style="padding-inline:2px">Os dados são médias agregadas por setor, não a experiência individual de cada pessoa.</p>` : ''}
+    ${m.perfilAtivo && m.perfilMetricas && m.perfilMetricas.f1 != null
+      ? blocoMetricas('Espera típica do horário', `modelo treinado com dados reais · ${esc(m.perfilFonte || '')} · baseline: mediana do setor`, m.perfilMetricas) : ''}`;
+  icones();
+}
+
+// ------------------------------------------------------------------ MÉTRICAS (Chart.js)
+const CH = { hora: null, local: null, dist: null };
+
+function estiloGrafico() {
+  const texto = cssVar('--muted'), linha = cssVar('--line');
+  Chart.defaults.font.family = cssVar('--font');
+  Chart.defaults.font.size = 12;
+  Chart.defaults.color = texto;
+  return { texto, linha };
+}
+
+function destruirGraficos() {
+  Object.keys(CH).forEach((k) => { if (CH[k]) { CH[k].destroy(); CH[k] = null; } });
+  S.metricasPronto = false;
+}
+
+function montarMetricas() {
+  $('#metricasBody').innerHTML = `
+    <div class="kpis" id="kpis"></div>
+    <div class="charts">
+      <div class="panel">
+        <div class="panel-head"><h2>Espera média por horário</h2><select class="input select" id="metEstab" style="min-width:200px" aria-label="Unidade"></select></div>
+        <div class="panel-body"><div class="chart-box"><canvas id="chHora"></canvas></div><div class="insights" id="insights"></div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h2>Espera média por unidade</h2></div>
+        <div class="panel-body"><div class="chart-box"><canvas id="chLocal"></canvas></div></div>
+      </div>
+    </div>
+    <div class="charts charts-2">
+      <div class="panel">
+        <div class="panel-head"><h2>Localização: distância média dos clientes</h2></div>
+        <div class="panel-body"><div class="chart-box"><canvas id="chDist"></canvas></div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h2>Resumo por unidade</h2></div>
+        <div class="table-wrap"><table class="tbl"><thead><tr><th>Unidade</th><th class="r">Espera</th><th class="r">Atend.</th><th class="r">Na fila</th></tr></thead><tbody id="resumoTab"></tbody></table></div>
+      </div>
+    </div>`;
+  S.metricasPronto = true;
+}
+
+function barras(canvasId, chave, tipo, labels, dados, cores, horizontal) {
+  const { texto, linha } = estiloGrafico();
+  if (CH[chave]) {
+    CH[chave].data.labels = labels; CH[chave].data.datasets[0].data = dados; CH[chave].data.datasets[0].backgroundColor = cores;
+    CH[chave].update('none');
+    return;
+  }
+  CH[chave] = new Chart($(canvasId), {
+    type: tipo,
+    data: { labels, datasets: [{ data: dados, backgroundColor: cores, borderRadius: 3, maxBarThickness: 36 }] },
+    options: {
+      indexAxis: horizontal ? 'y' : 'x', responsive: true, maintainAspectRatio: false, animation: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => ` ${fmtDec(c.parsed[horizontal ? 'x' : 'y'])} ${chave === 'dist' ? 'km' : 'min'}` } } },
+      scales: {
+        x: { grid: { display: !horizontal ? false : true, color: linha }, ticks: { color: texto } },
+        y: { grid: { display: horizontal ? false : true, color: linha }, ticks: { color: texto }, beginAtZero: true },
+      },
+    },
+  });
+}
+
+function renderMetricas(m) {
+  if (!S.metricasPronto) montarMetricas();
+  const ok = cssVar('--ok'), warn = cssVar('--warn'), bad = cssVar('--bad'), pri = cssVar('--primary'), info = cssVar('--info');
+
+  $('#kpis').innerHTML = `
+    <div class="kpi"><span class="eyebrow">Atendimentos</span><b>${m.atendimentosTotal.toLocaleString('pt-BR')}</b><p>Base histórica e ao vivo</p></div>
+    <div class="kpi"><span class="eyebrow">Espera média</span><b>${fmtDec(m.esperaMediaMin)}<small>min</small></b><p>Entre entrar na fila e ser chamado</p></div>
+    <div class="kpi"><span class="eyebrow">Distância média</span><b>${fmtDec(m.distanciaMediaClientesKm)}<small>km</small></b><p>De onde o cliente entra na fila</p></div>
+    <div class="kpi"><span class="eyebrow">Na fila agora</span><b>${m.pessoasEmFilaAgora}</b><p>${m.ticketsAtivos} tickets ativos</p></div>`;
+
+  const sel = $('#metEstab');
+  const opcoes = '<option value="">Todas as unidades</option>' + m.estabelecimentos.slice().sort((a, b) => a.nome.localeCompare(b.nome))
+    .map((e) => `<option value="${e.id}">${esc(e.nome)}</option>`).join('');
+  if (sel.dataset.n !== String(m.estabelecimentos.length)) { sel.innerHTML = opcoes; sel.dataset.n = String(m.estabelecimentos.length); }
+  sel.value = S.metricasEstab;
+
+  const cor = (h) => (h.hora === m.melhorHorario ? ok : h.hora === m.piorHorario ? bad : pri);
+  barras('#chHora', 'hora', 'bar', m.esperaPorHora.map((h) => `${h.hora}h`), m.esperaPorHora.map((h) => h.esperaMediaMin), m.esperaPorHora.map(cor), false);
+  $('#insights').innerHTML = `
+    ${m.melhorHorario != null ? `<span class="badge ok">Melhor horário: ${m.melhorHorario}h</span>` : ''}
+    ${m.piorHorario != null ? `<span class="badge bad">Evite: ${m.piorHorario}h</span>` : ''}
+    <span class="badge">Previsor: ${esc(m.previsor)}</span>`;
+
+  const maxE = Math.max(...m.estabelecimentos.map((e) => e.esperaMediaMin), 1);
+  const porEspera = m.estabelecimentos.slice().sort((a, b) => b.esperaMediaMin - a.esperaMediaMin);
+  barras('#chLocal', 'local', 'bar', porEspera.map((e) => e.nome), porEspera.map((e) => e.esperaMediaMin),
+    porEspera.map((e) => (e.esperaMediaMin > maxE * 0.66 ? bad : e.esperaMediaMin > maxE * 0.33 ? warn : ok)), true);
+  const porDist = m.estabelecimentos.slice().sort((a, b) => b.distanciaMediaClientesKm - a.distanciaMediaClientesKm);
+  barras('#chDist', 'dist', 'bar', porDist.map((e) => e.nome), porDist.map((e) => e.distanciaMediaClientesKm), porDist.map(() => info), true);
+
+  $('#resumoTab').innerHTML = m.estabelecimentos.map((e) => `<tr><td>${esc(e.nome)}<small>${esc(e.bairro)} · serviço ${fmtDec(e.tempoServicoMedioMin)} min</small></td>
+    <td class="r num">${fmtDec(e.esperaMediaMin)} min</td><td class="r num">${e.atendimentos.toLocaleString('pt-BR')}</td><td class="r num">${e.filaAgora}</td></tr>`).join('');
 }

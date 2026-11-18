@@ -20,10 +20,24 @@ public class BotService {
         this.local = local;
     }
 
+    /**
+     * Quem responde cada pergunta:
+     * <ul>
+     *   <li>dados da fila (ticket, posicao, espera, hora de sair, fila mais rapida): o proprio app, que tem esses dados;</li>
+     *   <li>emergencia, orientacao medica, funcoes do aplicativo e servicos publicos (UBS/UPA/SUS): o bot de suporte;</li>
+     *   <li>bot fora do ar ou sem resposta ("not_found"): assistente local, que tambem encaminha emergencias ao 192.</li>
+     * </ul>
+     */
     public BotResposta responder(BotPergunta pergunta) {
+        boolean emergencia = local.emergencia(pergunta.mensagem());
+        if (!emergencia && local.dadoAoVivo(pergunta.mensagem())) {
+            return local.responder(pergunta);
+        }
         if (externo.configurado()) {
             try {
-                return externo.responder(pergunta);
+                BotResposta resposta = externo.responder(pergunta);
+                if (!"not_found".equals(resposta.categoria())) return resposta;
+                log.info("Bot externo nao classificou a mensagem (not_found). Usando assistente local.");
             } catch (RuntimeException ex) {
                 log.warn("Bot externo indisponível ({}). Usando assistente local.", ex.getMessage());
             }

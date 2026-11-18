@@ -145,3 +145,32 @@ classDiagram
 - **Interface `BotAtendimento`:** duas implementações (`BotExterno`, `BotLocal`); `BotService` escolhe e faz fallback.
 - **`Ticket` guarda a localização do cliente:** é a métrica de localização que alimenta o "hora de sair" e as métricas de distância.
 - **`ModeloEspera` é lido de JSON:** os modelos são lineares, então não é preciso embutir Python; a equivalência com o scikit-learn é testada.
+
+## Importação de estabelecimentos reais
+
+```mermaid
+classDiagram
+    direction LR
+    class OverpassClient {
+        +buscar(cidade) List~UnidadeImportada~
+    }
+    class UnidadeImportada {
+        <<record>>
+        nome
+        categoria
+        endereco
+        bairro
+        latitude
+        longitude
+    }
+    class ImportadorService {
+        +salvar(unidades) int
+    }
+    class DataSeeder
+    OverpassClient --> UnidadeImportada : lê do OpenStreetMap
+    ImportadorService ..> UnidadeImportada
+    ImportadorService --> Estabelecimento : cria sem duplicar
+    DataSeeder --> ImportadorService : carrega data/estabelecimentos.json
+```
+
+Nome, endereço e coordenadas são reais (OpenStreetMap). Guichês e tempo médio de atendimento são **estimados** por tipo de lugar, porque a fonte não os informa.

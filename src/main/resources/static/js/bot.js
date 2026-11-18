@@ -1,4 +1,4 @@
-/* Widget do assistente. Fala com POST /api/bot/mensagem (que usa o bot externo se configurado). */
+/* Widget de suporte. Fala com POST /api/bot/mensagem (que usa o bot externo se configurado). */
 const BOT = {
   sessao: store.get('sessao', null) || (() => { const s = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now())); store.set('sessao', s); return s; })(),
   aberto: false,
@@ -18,7 +18,7 @@ function botAdd(texto, quem, origem) {
 
 function botSugestoes(lista) {
   $('#quick').innerHTML = (lista && lista.length ? lista : SUGESTOES_PADRAO)
-    .map((s) => `<button class="chip" type="button" data-q="${esc(s)}">${esc(s)}</button>`).join('');
+    .map((s) => `<button type="button" data-q="${esc(s)}">${esc(s)}</button>`).join('');
 }
 
 function botAbrir(abrir) {
@@ -28,7 +28,7 @@ function botAbrir(abrir) {
   if (abrir) {
     if (!BOT.iniciou) {
       BOT.iniciou = true;
-      botAdd('Oi! Sou o assistente da Fila Certa 👋 Posso te dizer quanto falta, quando sair de casa ou qual a fila mais rápida perto de você.', 'bot');
+      botAdd('Olá. Sou o suporte da Fila Certa. Posso informar quanto falta, quando você deve sair e qual a fila mais rápida perto de você.', 'bot');
       botSugestoes();
     }
     $('#botInput').focus();
@@ -50,14 +50,14 @@ async function botEnviar(texto) {
       method: 'POST',
       body: { mensagem: texto, sessaoId: BOT.sessao, ticketId: S.ticketId, latitude: S.loc.lat, longitude: S.loc.lng, modo: S.modo },
     });
-    await new Promise((ok) => setTimeout(ok, 350));
+    await new Promise((ok) => setTimeout(ok, 300));
     digitando.remove();
-    botAdd(r.resposta, 'bot', r.origem === 'bot-externo' ? 'bot de suporte' : 'assistente local');
-    $('#botOrigem').textContent = r.origem === 'bot-externo' ? 'bot de suporte conectado' : 'online';
+    botAdd(r.resposta, 'bot', r.origem === 'bot-externo' ? 'Bot de suporte' : 'Assistente local');
+    $('#botOrigem').textContent = r.origem === 'bot-externo' ? 'Bot de suporte conectado' : 'Online';
     botSugestoes(r.sugestoes);
   } catch (err) {
     digitando.remove();
-    botAdd('Tive um problema para responder agora. Tente de novo em instantes.', 'bot');
+    botAdd('Não consegui responder agora. Tente novamente em instantes.', 'bot');
   }
 }
 
