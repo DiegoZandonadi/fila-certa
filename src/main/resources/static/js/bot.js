@@ -52,8 +52,8 @@ async function botEnviar(texto) {
     });
     await new Promise((ok) => setTimeout(ok, 300));
     digitando.remove();
-    botAdd(r.resposta, 'bot', r.origem === 'bot-externo' ? 'Bot de suporte' : 'Assistente local');
-    $('#botOrigem').textContent = r.origem === 'bot-externo' ? 'Bot de suporte conectado' : 'Online';
+    botAdd(r.resposta, 'bot', r.origem === 'bot-externo' ? 'Agente de suporte' : 'Assistente local');
+    $('#botOrigem').textContent = r.origem === 'bot-externo' ? 'Agente conectado' : 'Modo local';
     botSugestoes(r.sugestoes);
   } catch (err) {
     digitando.remove();

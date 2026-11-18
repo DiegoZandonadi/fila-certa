@@ -36,18 +36,40 @@ Global Solution 2026.2 · CitizenTech · Engenharia de Software (2º ano) · dis
 
 Sem a Fila Certa, o tempo até ser atendido é `deslocamento + espera`. Com ela é `max(deslocamento, espera)`: a pessoa entra na fila de longe e sai de casa só quando a vez dela está chegando. O app mostra essa economia em cada local e, no ticket, a contagem "saia em X min".
 
-## Rodando
+## Instalação e execução
 
-Requisitos: **Java 17+** e internet na primeira execução (baixa as dependências). O Maven Wrapper dispensa instalar o Maven.
+Requisitos: **Java 17+** e **Python 3.11+**. O Maven Wrapper dispensa instalar o Maven. O agente está no diretório `support-agent/` e não exige Ollama nem chave de API.
 
-```bash
-./mvnw spring-boot:run        # Windows (PowerShell/cmd): .\mvnw.cmd spring-boot:run
+No VS Code, instale as extensões recomendadas e execute a tarefa `setup: agente Python` uma vez. Depois use a configuração de depuração composta `Fila Certa: aplicação completa`. Os arquivos em `.vscode/` já configuram Java, Python, pytest e os dois processos.
+
+Na primeira execução, prepare o ambiente do agente:
+
+```powershell
+cd support-agent
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -e ".[dev]"
 ```
 
-ou, gerando o jar (executa os testes):
+Depois, mantenha dois terminais abertos. No **Terminal 1**, inicie o agente:
+
+```powershell
+cd support-agent
+.\.venv\Scripts\Activate.ps1
+python -m uvicorn support_agent.main:app --reload --port 6969
+```
+
+No **Terminal 2**, na raiz do projeto, empacote e inicie o backend:
 
 ```bash
 ./mvnw package                # Windows: .\mvnw.cmd package
+java -jar target/fila-certa-1.0.0.jar
+```
+
+O empacotamento executa os testes. Para iniciar sem repeti-los após uma suíte já validada:
+
+```bash
+./mvnw -DskipTests package    # Windows: .\mvnw.cmd -DskipTests package
 java -jar target/fila-certa-1.0.0.jar
 ```
 
@@ -59,7 +81,14 @@ Abra <http://localhost:8080>. Sem nada para instalar: usa H2 em memória.
 java -jar target/fila-certa-1.0.0.jar --spring.profiles.active=arquivo
 ```
 
-Testes: `./mvnw test` (29 testes: regras do domínio, fila e concorrência, importador, bot, leitura do painel de Barueri e a verificação de que o Java reproduz o scikit-learn).
+Testes completos no PowerShell:
+
+```powershell
+.\mvnw.cmd test
+.\support-agent\.venv\Scripts\python.exe -m pytest .\support-agent\tests
+```
+
+A suíte cobre regras do domínio, fila e concorrência, importador, integração do agente, recomendação com e sem dados, emergência, pedido médico, funcionalidades do app, UBS/UPA/SUS, pergunta desconhecida e paridade dos modelos de ML.
 
 ## Telas
 
@@ -86,9 +115,10 @@ br.com.filacerta
 │  └─ previsao/  PrevisorTempoEspera  ← ponto de extensão (fila local)
 ├─ importacao/   OverpassClient (OpenStreetMap), ImportadorService, /api/importacao
 ├─ ml/           Coleta de Barueri, ModeloEspera (regressões do notebook), PrevisaoService, /api/ml
-├─ bot/          BotService → BotExterno (HTTP) | BotLocal (regras, fallback)
+├─ bot/          BotService → agente FastAPI contextual | BotLocal (fallback seguro)
 ├─ web/          Controllers REST + DTOs + tratamento de erros
 └─ config/       DataSeeder, RelogioApp
+support-agent/   FastAPI: classificação → segurança → app/RAG/recomendação → suporte
 ```
 
 O **modelo de domínio** (diagramas e responsabilidades) está em [docs/modelo-de-dominio.md](docs/modelo-de-dominio.md).
@@ -159,39 +189,54 @@ Os dois modelos são **lineares**: o Java usa só intercepto, coeficientes e pad
 
 > **Correção feita no notebook original:** `"1 h e 36 min"` era lido como **1 minuto**. O painel real tem muitas esperas assim; a versão em `ml/` converte para 96 min. O notebook original do grupo não foi alterado.
 
-## Integração do bot de suporte
+## Agente de suporte integrado
 
-O bot do grupo é o repositório [public-services-support-agent](https://github.com/DaviAlves06/public-services-support-agent) (FastAPI, porta 6969). O app conversa com ele por `POST /chat`:
+O agente evolui o repositório [public-services-support-agent](https://github.com/DaviAlves06/public-services-support-agent) e agora faz parte deste workspace em `support-agent/`. O app conversa com ele por `POST /chat`:
 
 ```json
-{ "message": "Como acesso minha carteirinha?" }
+{ "message": "Como entro na fila pelo aplicativo?" }
 ```
 ```json
-{ "category": "app_feature", "answer": "Abra a aba Carteirinha..." }
+{
+  "category": "app_feature",
+  "answer": "Na aba Descobrir, escolha uma unidade, selecione ‘Entrar na fila’..."
+}
 ```
 
-O app envia também `mensagem`, `sessaoId`, `ticketId` e `contexto` (ticket ao vivo e unidades com espera e distância); o bot atual ignora esses campos extras, e a [próxima integração prevista no README dele](https://github.com/DaviAlves06/public-services-support-agent#próxima-integração-backend-java-e-entrega-6) é justamente usá-los.
+O backend também envia `mensagem`, `sessaoId`, `ticketId` e `contexto`. Em `contexto.dadosOperacionais`, cada unidade contém nome, distância, espera estimada, serviço disponível, status, indicador de recomendação e a informação de que a fila é simulada. O agente **não recalcula nem escolhe** a unidade: apenas explica aquela marcada pelo sistema.
+
+O fluxo é explícito: **classificação → segurança → resposta do app/RAG/recomendação → suporte humano**. As categorias são `emergency`, `medical_request`, `app_feature`, `public_service`, `system_recommendation` e `not_found`.
 
 **Quem responde cada pergunta** (`BotService`):
 
 | Pergunta | Quem responde |
 |---|---|
-| Fila, ticket, posição, espera, hora de sair, fila mais rápida | O próprio app (só ele tem esses dados) |
-| Emergência, pedido de remédio/tratamento, funções do aplicativo, UBS/UPA/SUS | O bot de suporte |
-| Bot fora do ar, ou resposta `not_found` | Assistente local do app, que também encaminha emergências ao SAMU 192 |
+| Ticket, posição, espera e hora de sair | O próprio app (só ele tem esses dados) |
+| Explicação da unidade recomendada | Agente, usando somente `dadosOperacionais` |
+| Emergência, pedido de remédio/tratamento, funções do aplicativo, UBS/UPA/SUS | O agente de suporte |
+| Agente fora do ar, ou resposta `not_found` | Assistente local do app, que também encaminha emergências ao SAMU 192 |
 
-**Como rodar o bot** (PowerShell, na pasta do bot):
+**Como rodar somente o agente** (PowerShell):
 
 ```powershell
-python -m venv .venv
+cd support-agent
 .\.venv\Scripts\Activate.ps1
-python -m pip install fastapi "uvicorn[standard]" pydantic numpy ollama python-dotenv langchain-text-splitters
-python -m uvicorn supagent:app --port 6969
+python -m uvicorn support_agent.main:app --port 6969
 ```
 
-As respostas sobre UBS, UPA e SUS usam busca semântica local e exigem o [Ollama](https://ollama.com/) com `ollama pull nomic-embed-text` e `python .\rag\embeddings.py` (veja o README do bot). Sem isso, o bot responde emergência, orientação médica e funções do app, e o app usa o plano B nas demais.
+As respostas sobre UBS, UPA e SUS usam recuperação local fundamentada em fontes oficiais. O fluxo não depende de serviço externo, embeddings ou modelo generativo; uma pergunta sem conteúdo recuperado vai para suporte humano em vez de produzir uma resposta inventada.
 
-Endereço do bot: `filacerta.bot.url` em `application.properties` (padrão `http://127.0.0.1:6969/chat`; em branco desativa). Para chave de acesso: `filacerta.bot.api-key` (enviada como `Bearer`).
+Endereço do agente: `filacerta.bot.url` em `application.properties` (padrão `http://127.0.0.1:6969/chat`; em branco desativa). Para chave de acesso: `filacerta.bot.api-key` (enviada como `Bearer`).
+
+### Dados de recomendação e limites
+
+- `support-agent/data/simulated_units.json` contém o cenário simulado usado nos testes.
+- Em execução integrada, o agente usa exclusivamente os dados enviados pelo Java.
+- Sem unidade marcada como recomendada ou sem fatores operacionais, a resposta informa a ausência de dados e encaminha ao suporte humano.
+- Emergência sempre tem precedência e resulta em orientação para atendimento de urgência/SAMU 192, sem diagnóstico ou triagem.
+- Pedidos de medicamento, dose, exame, diagnóstico ou tratamento são recusados.
+- O RAG cobre somente conceitos gerais de UBS, UPA e SUS e não confirma horários, vagas, lotação ou disponibilidade em tempo real.
+- O agente não persiste conversas, dados pessoais ou dados clínicos.
 
 ## Publicar online (celular)
 

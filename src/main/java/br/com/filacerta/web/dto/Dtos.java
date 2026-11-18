@@ -140,7 +140,7 @@ public final class Dtos {
             ModoDeslocamento modo) {
     }
 
-    /** categoria: a do bot de suporte (emergency, medical_request, app_feature, public_service, not_found), se houver. */
+    /** categoria: emergency, medical_request, app_feature, public_service, system_recommendation ou not_found. */
     public record BotResposta(String resposta, String origem, List<String> sugestoes, String categoria) {
         public BotResposta(String resposta, String origem, List<String> sugestoes) {
             this(resposta, origem, sugestoes, null);
