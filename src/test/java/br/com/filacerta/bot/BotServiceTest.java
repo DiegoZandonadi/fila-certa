@@ -46,6 +46,18 @@ class BotServiceTest {
     }
 
     @Test
+    void pedidoDeRecomendacaoVaiParaOAgenteComCategoriaPropria() {
+        when(externo.responder(any())).thenReturn(doBot(
+                "O sistema sugeriu a unidade com base nos dados recebidos.", "system_recommendation"));
+
+        BotResposta r = servico.responder(pergunta("Por que esta unidade foi recomendada?"));
+
+        assertThat(r.origem()).isEqualTo("bot-externo");
+        assertThat(r.categoria()).isEqualTo("system_recommendation");
+        verify(externo).responder(any());
+    }
+
+    @Test
     void emergenciaVaiParaOBotDeSuporte() {
         when(externo.responder(any())).thenReturn(doBot("Busque atendimento de urgencia. SAMU 192.", "emergency"));
         BotResposta r = servico.responder(pergunta("Estou com dor no peito, quanto tempo de espera?"));
@@ -80,5 +92,14 @@ class BotServiceTest {
         BotResposta r = servico.responder(pergunta("tive um desmaio agora"));
         assertThat(r.resposta()).contains("192");
         assertThat(r.resposta()).containsIgnoringCase("urgência");
+    }
+
+    @Test
+    void semBotConfiguradoPedidoMedicoEncaminhaAoSuporteSemInventar() {
+        when(externo.configurado()).thenReturn(false);
+        BotResposta r = servico.responder(pergunta("Qual remédio e dose devo tomar?"));
+        assertThat(r.categoria()).isEqualTo("not_found");
+        assertThat(r.resposta()).containsIgnoringCase("suporte humano");
+        assertThat(r.resposta()).doesNotContainIgnoringCase("dipirona");
     }
 }

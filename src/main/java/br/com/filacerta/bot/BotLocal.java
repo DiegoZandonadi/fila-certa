@@ -31,7 +31,10 @@ public class BotLocal implements BotAtendimento {
             "dor no peito", "falta de ar", "desmai", "sangramento", "acidente", "convuls", "infarto", "overdose", "parada cardiaca");
     private static final List<String> DADOS_AO_VIVO = List.of(
             "quanto tempo", "tempo de espera", "quanto falta", "espera", "quando devo sair", "hora de sair", "quando sair",
-            "minha posicao", "na minha frente", "quantas pessoas", "fila mais rapida", "melhor fila", "menos fila", "mais rapida", "qual a fila");
+            "minha posicao", "na minha frente", "quantas pessoas");
+    private static final List<String> RECOMENDACAO = List.of(
+            "fila mais rapida", "melhor fila", "menos fila", "mais rapida", "qual a fila", "qual unidade",
+            "unidade recomend", "por que recomend", "porque recomend", "menos cheia", "menor espera", "onde ir");
 
     /** Possivel emergencia: a resposta e sempre encaminhar para urgencia, sem avaliar gravidade. */
     public boolean emergencia(String mensagem) {
@@ -43,6 +46,11 @@ public class BotLocal implements BotAtendimento {
         return tem(normalizar(mensagem), DADOS_AO_VIVO.toArray(new String[0]));
     }
 
+    /** Pedido que deve ser explicado pelo agente a partir dos dados operacionais enviados pelo app. */
+    public boolean pedidoRecomendacao(String mensagem) {
+        return tem(normalizar(mensagem), RECOMENDACAO.toArray(new String[0]));
+    }
+
     @Override
     public BotResposta responder(BotPergunta p) {
         String msg = normalizar(p.mensagem());
@@ -50,7 +58,7 @@ public class BotLocal implements BotAtendimento {
 
         if (emergencia(p.mensagem())) {
             return resp("Busque atendimento de urgência imediatamente, como uma UPA ou pronto-socorro, ou acione o SAMU pelo número 192. "
-                    + "Não consigo avaliar a gravidade da situação por aqui.");
+                    + "Não consigo avaliar a gravidade da situação por aqui.", "emergency");
         }
 
         if (tem(msg, "oi", "ola", "bom dia", "boa tarde", "boa noite", "e ai")) {
@@ -78,7 +86,7 @@ public class BotLocal implements BotAtendimento {
             return resp("Ao entrar na fila você pode marcar “Atendimento prioritário” (idosos, gestantes, pessoas com "
                     + "deficiência). Quem é prioritário passa na frente de quem aguarda sem prioridade.");
         }
-        if (tem(msg, "rapida", "melhor", "perto", "recomend", "onde", "menos fila", "vazia")) {
+        if (pedidoRecomendacao(p.mensagem()) || tem(msg, "rapida", "melhor", "perto", "recomend", "onde", "menos fila", "vazia")) {
             return melhorFila(p);
         }
         if (tem(msg, "obrigad", "valeu", "tchau")) {
@@ -86,10 +94,9 @@ public class BotLocal implements BotAtendimento {
         }
         if (tem(msg, "ubs", "upa", "sus", "posto de saude", "pronto socorro", "pronto atendimento")) {
             return resp("Não consegui consultar a base de informações sobre UBS, UPA e SUS agora. Tente de novo em instantes "
-                    + "ou procure o suporte humano. Se for uma urgência, ligue 192 (SAMU) ou vá à UPA mais próxima.");
+                    + "ou procure o suporte humano. Se for uma urgência, ligue 192 (SAMU) ou procure atendimento de urgência.", "public_service");
         }
-        return resp("Não tenho certeza se entendi. Posso ajudar com tempo de espera, hora de sair, sua posição na fila "
-                + "ou recomendar o lugar mais rápido perto de você.");
+        return resp("Não encontrei informação segura e documentada para responder. Procure o suporte humano do Fila Certa.", "not_found");
     }
 
     private BotResposta espera(TicketView t) {
@@ -122,16 +129,18 @@ public class BotLocal implements BotAtendimento {
 
     private BotResposta melhorFila(BotPergunta p) {
         List<EstabelecimentoResumo> lista = fila.listar(p.latitude(), p.longitude(), p.modo(), null);
-        if (lista.isEmpty()) return resp("Ainda não há estabelecimentos cadastrados.");
-        StringBuilder sb = new StringBuilder(p.latitude() == null
-                ? "Pelas filas de agora, as mais curtas são:"
-                : "Considerando fila + deslocamento, as melhores opções para você são:");
-        for (int i = 0; i < Math.min(3, lista.size()); i++) {
-            EstabelecimentoResumo r = lista.get(i);
-            sb.append("\n• ").append(r.nome()).append(" — espera de ").append(min(r.esperaMin()));
-            if (r.distanciaKm() != null) sb.append(", a ").append(r.distanciaKm()).append(" km");
+        EstabelecimentoResumo r = lista.stream().filter(EstabelecimentoResumo::recomendado).findFirst().orElse(null);
+        if (r == null) {
+            return resp("Não recebi dados operacionais suficientes para explicar uma recomendação. "
+                    + "Consulte novamente os resultados ou procure o suporte humano.", "system_recommendation");
         }
-        return resp(sb.toString());
+        StringBuilder sb = new StringBuilder("O sistema marcou ").append(r.nome())
+                .append(" como recomendada com base nos dados disponíveis: espera estimada de ")
+                .append(min(r.esperaMin())).append("; serviço: ").append(r.categoriaRotulo())
+                .append("; status: ").append(statusOperacional(r)).append(".");
+        if (r.distanciaKm() != null) sb.append(" Distância informada: ").append(r.distanciaKm()).append(" km.");
+        sb.append(" Os dados de fila são simulados para demonstração. Eu não faço triagem nem altero prioridades.");
+        return resp(sb.toString(), "system_recommendation");
     }
 
     private BotResposta semTicket() {
@@ -149,6 +158,14 @@ public class BotLocal implements BotAtendimento {
 
     private static BotResposta resp(String texto) {
         return new BotResposta(texto, "assistente-local", SUGESTOES);
+    }
+
+    private static BotResposta resp(String texto, String categoria) {
+        return new BotResposta(texto, "assistente-local", SUGESTOES, categoria);
+    }
+
+    static String statusOperacional(EstabelecimentoResumo r) {
+        return r.guichesLivres() > 0 ? "GUICHE_DISPONIVEL" : "FILA_ATIVA";
     }
 
     private static String min(Integer v) {

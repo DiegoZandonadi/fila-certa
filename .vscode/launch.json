@@ -1,0 +1,36 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "java",
+      "name": "Fila Certa: backend Java",
+      "request": "launch",
+      "mainClass": "br.com.filacerta.FilaCertaApplication",
+      "projectName": "fila-certa"
+    },
+    {
+      "type": "debugpy",
+      "name": "Fila Certa: agente Python",
+      "request": "launch",
+      "module": "uvicorn",
+      "args": [
+        "support_agent.main:app",
+        "--reload",
+        "--port",
+        "6969"
+      ],
+      "cwd": "${workspaceFolder}/support-agent",
+      "python": "${workspaceFolder}/support-agent/.venv/Scripts/python.exe"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Fila Certa: aplicação completa",
+      "configurations": [
+        "Fila Certa: agente Python",
+        "Fila Certa: backend Java"
+      ],
+      "stopAll": true
+    }
+  ]
+}

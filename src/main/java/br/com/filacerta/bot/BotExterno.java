@@ -5,6 +5,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import br.com.filacerta.web.dto.Dtos.BotPergunta;
 import br.com.filacerta.web.dto.Dtos.BotResposta;
+import br.com.filacerta.web.dto.Dtos.EstabelecimentoResumo;
 import br.com.filacerta.web.exception.RecursoNaoEncontradoException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
 import java.util.LinkedHashMap;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -68,7 +70,9 @@ public class BotExterno implements BotAtendimento {
                 // ticket inexistente: segue sem contexto de ticket
             }
         }
-        contexto.put("estabelecimentos", fila.listar(p.latitude(), p.longitude(), p.modo(), null));
+        List<EstabelecimentoResumo> estabelecimentos = fila.listar(p.latitude(), p.longitude(), p.modo(), null);
+        contexto.put("estabelecimentos", estabelecimentos);
+        contexto.put("dadosOperacionais", dadosOperacionais(estabelecimentos));
 
         Map<String, Object> corpo = new LinkedHashMap<>();
         corpo.put("message", p.mensagem());   // campo exigido pelo bot (POST /chat)
@@ -93,6 +97,24 @@ public class BotExterno implements BotAtendimento {
         if (texto == null || texto.isBlank()) throw new IllegalStateException("Bot externo respondeu sem texto");
         Object categoria = retorno.get("category");
         return new BotResposta(texto, "bot-externo", List.of(), categoria instanceof String c ? c : null);
+    }
+
+    /** Contrato mínimo e explícito usado para explicar, sem recalcular, a recomendação feita pelo sistema. */
+    static List<Map<String, Object>> dadosOperacionais(List<EstabelecimentoResumo> estabelecimentos) {
+        List<Map<String, Object>> dados = new ArrayList<>();
+        for (EstabelecimentoResumo r : estabelecimentos) {
+            Map<String, Object> unidade = new LinkedHashMap<>();
+            unidade.put("id", r.id());
+            unidade.put("nome", r.nome());
+            unidade.put("distanciaKm", r.distanciaKm());
+            unidade.put("tempoEstimadoEsperaMin", r.esperaMin());
+            unidade.put("servicoDisponivel", r.categoriaRotulo());
+            unidade.put("status", BotLocal.statusOperacional(r));
+            unidade.put("recomendadaPeloSistema", r.recomendado());
+            unidade.put("dadosSimulados", true);
+            dados.add(unidade);
+        }
+        return dados;
     }
 
     private static String extrair(Map<String, Object> retorno) {

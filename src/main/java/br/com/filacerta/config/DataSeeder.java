@@ -15,8 +15,11 @@ import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -34,24 +37,29 @@ import java.util.UUID;
 public class DataSeeder implements CommandLineRunner {
 
     private static final Logger log = LoggerFactory.getLogger(DataSeeder.class);
-    private static final int DIAS_HISTORICO = 4;
-
     private final EstabelecimentoRepository estabelecimentos;
     private final TicketRepository tickets;
     private final SimuladorFila simulador;
     private final RelogioApp relogio;
     private final ImportadorService importador;
     private final ObjectMapper json;
+    private final TransactionTemplate seedTransaction;
+    private final int diasHistorico;
     private final Random random = new Random(42);
 
     public DataSeeder(EstabelecimentoRepository estabelecimentos, TicketRepository tickets,
-                      SimuladorFila simulador, RelogioApp relogio, ImportadorService importador, ObjectMapper json) {
+                      SimuladorFila simulador, RelogioApp relogio, ImportadorService importador, ObjectMapper json,
+                      PlatformTransactionManager transactionManager,
+                      @Value("${filacerta.seed.dias-historico:4}") int diasHistorico) {
         this.estabelecimentos = estabelecimentos;
         this.tickets = tickets;
         this.simulador = simulador;
         this.relogio = relogio;
         this.importador = importador;
         this.json = json;
+        this.seedTransaction = new TransactionTemplate(transactionManager);
+        this.seedTransaction.setTimeout(120);
+        this.diasHistorico = Math.max(0, diasHistorico);
     }
 
     @Override
@@ -69,7 +77,7 @@ public class DataSeeder implements CommandLineRunner {
         List<Ticket> historico = new ArrayList<>();
         LocalDateTime fim = relogio.agora().toLocalDate().atStartOfDay();
         for (Estabelecimento e : lista) {
-            for (int d = DIAS_HISTORICO; d >= 1; d--) {
+            for (int d = diasHistorico; d >= 1; d--) {
                 LocalDateTime dia = fim.minusDays(d);
                 for (int hora = 8; hora < 19; hora++) {
                     double util = utilizacao(hora);
@@ -80,7 +88,8 @@ public class DataSeeder implements CommandLineRunner {
                 }
             }
         }
-        tickets.saveAll(historico);
+        // O histórico grande tem um timeout próprio; as transações normais continuam limitadas a 15 s.
+        seedTransaction.executeWithoutResult(status -> tickets.saveAll(historico));
         simulador.semear();
         log.info("Fila Certa pronta: {} estabelecimentos, {} atendimentos de histórico.", lista.size(), historico.size());
     }

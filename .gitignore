@@ -3,3 +3,8 @@ target/
 *.iml
 *.log
 /data/
+support-agent/.venv/
+support-agent/.pytest_cache/
+support-agent/**/__pycache__/
+support-agent/*.egg-info/
+*.pyc

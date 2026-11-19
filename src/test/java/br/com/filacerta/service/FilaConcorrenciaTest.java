@@ -26,6 +26,7 @@ import static org.assertj.core.api.Assertions.assertThat;
         "filacerta.barueri.habilitado=false",
         "filacerta.simulacao.habilitada=true",
         "filacerta.simulacao.intervalo-ms=300",
+        "filacerta.seed.dias-historico=0",
         "filacerta.relogio.fator=60"})
 class FilaConcorrenciaTest {
 

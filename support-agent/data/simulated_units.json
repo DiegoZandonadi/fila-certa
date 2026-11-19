@@ -1,0 +1,20 @@
+[
+  {
+    "nome": "UBS Central (simulada)",
+    "distanciaKm": 1.8,
+    "tempoEstimadoEsperaMin": 12,
+    "servicoDisponivel": "Atendimento básico",
+    "status": "GUICHE_DISPONIVEL",
+    "recomendadaPeloSistema": true,
+    "dadosSimulados": true
+  },
+  {
+    "nome": "UPA Norte (simulada)",
+    "distanciaKm": 3.4,
+    "tempoEstimadoEsperaMin": 28,
+    "servicoDisponivel": "Pronto atendimento",
+    "status": "FILA_ATIVA",
+    "recomendadaPeloSistema": false,
+    "dadosSimulados": true
+  }
+]
