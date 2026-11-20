@@ -4,18 +4,13 @@
 
 Global Solution 2026.2 · CitizenTech · Engenharia de Software (2º ano) · disciplina **Domain Driven Design – Java**
 
-## Ficha da CitizenTech
-
-> O único campo que depende de uma pessoa real e está marcado **(preencher)** é o relato da pessoa entrevistada (etapa "Escutar" do enunciado). Os demais foram preenchidos com base nos dados e nos combinados do grupo; revisem antes de entregar.
-
 | Campo | Resposta |
 |---|---|
 | **Nome da CitizenTech** | Fila Certa |
 | **Cidade e bairro** | Barueri/SP. Bairros dos Prontos-Atendimentos monitorados: Engenho Novo, Imperial, Camargo, Mutinga e Centro (PAA e PAI). |
-| **Cidadão beneficiado** | Morador de Barueri (adulto, idoso ou responsável por uma criança) que precisa de um pronto-atendimento da rede pública e não sabe quanto vai esperar em cada unidade. **Pessoa entrevistada: (preencher nome ou perfil e o relato)**. |
 | **Problema, em uma frase** | Pessoas gastam horas em filas de pronto-atendimento sem saber qual unidade está mais vazia nem quando sair de casa, enquanto outras unidades ficam lotadas. |
 | **Como funciona** | O cidadão vê a espera prevista em cada unidade, entra na fila de onde estiver e o app cruza **tempo de espera × localização** para avisar a hora exata de sair. |
-| **O que cada parte faz** | **Java** (Diego): esta aplicação — domínio da fila, API REST, mapa, painel do atendente, métricas e integração com as demais partes. **Data Science** (Henrique e Rafael): regressão linear e logística com dados reais de Barueri, integradas em `/api/ml`. **Assistente de suporte** (Davi): bot FastAPI integrado ao chat do app. **Dynamic Programming** (Davi): busca em largura (BFS) em grafo de rede de atendimento, em Python, no repositório do bot. **AR-VR** (Davi): vídeo/experiência em Unreal Engine. **Database e Agile** (Luis Miguel): modelo relacional e organização do produto (backlog e retrospectiva). **Network:** (preencher). |
+| **O que cada parte faz** | **Java**: esta aplicação — domínio da fila, API REST, mapa, painel do atendente, métricas e integração com as demais partes. **Data Science** (Henrique e Rafael): regressão linear e logística com dados reais de Barueri, integradas em `/api/ml`. **Assistente de suporte** (Davi): bot FastAPI integrado ao chat do app. **Dynamic Programming** (Davi): busca em largura (BFS) em grafo de rede de atendimento, em Python, no repositório do bot. **AR-VR** (Davi): vídeo/experiência em Unreal Engine. **Database e Agile** (Luis Miguel): modelo relacional e organização do produto (backlog e retrospectiva). **Network:**. |
 | **Link do repositório** | https://github.com/DiegoZandonadi/fila-certa |
 | **Indicador de impacto** | **Minutos de fila economizados por atendimento** = `min(deslocamento, espera)`: o app calcula e mostra em cada unidade ("Economia de X min") e no resumo do ticket concluído. |
 | **ODS conectados** | **ODS 3** (Saúde e bem-estar: acesso mais rápido ao atendimento), **ODS 10** (Redução das desigualdades: informação a quem não pode "esperar para ver"), **ODS 11** (Cidades sustentáveis: serviços públicos melhor distribuídos) e **ODS 9** (Inovação e infraestrutura digital). |
